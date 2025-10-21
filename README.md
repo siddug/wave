@@ -80,7 +80,7 @@ Made with ❤️ by [siddg.com](https://www.siddg.com)
 
 ### Download Pre-built App (Recommended)
 
-1. Download the latest `.dmg` file from the [Releases](https://github.com/yourusername/wave/releases) page
+1. Download the latest `.dmg` file from the [Releases](https://github.com/siddug/wave/releases) page
 2. Open the `.dmg` file
 3. Drag Wave to your Applications folder
 4. Launch Wave from Applications
@@ -194,7 +194,7 @@ Improve transcription quality:
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/wave.git
+git clone https://github.com/siddug/wave.git
 cd wave
 
 # Install dependencies
@@ -311,7 +311,7 @@ Contributions are welcome! Here's how you can help:
 
 ### Reporting Issues
 
-Found a bug? Have a feature request? Please [open an issue](https://github.com/yourusername/wave/issues) with:
+Found a bug? Have a feature request? Please [open an issue](https://github.com/siddug/wave/issues) with:
 - Clear description
 - Steps to reproduce (for bugs)
 - Expected vs actual behavior
