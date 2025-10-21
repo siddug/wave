@@ -500,14 +500,18 @@ function createMainWindow() {
 
     // Prevent window from closing, just hide it instead
     mainWindow.on("close", (event) => {
+      console.log("[MAIN] Window close event, isQuitting:", app.isQuitting);
       if (!app.isQuitting) {
         event.preventDefault();
         mainWindow.hide();
         console.log("[MAIN] Window hidden instead of closed");
+      } else {
+        console.log("[MAIN] Allowing window to close because app is quitting");
       }
     });
 
     mainWindow.on("closed", () => {
+      console.log("[MAIN] Window closed event");
       mainWindow = null;
     });
   } catch (error) {
@@ -765,17 +769,13 @@ function startKeyboardListener() {
 function stopKeyboardListener() {
   if (keyboardListener) {
     console.log("[KEYBOARD] Stopping keyboard listener...");
-    // First try SIGTERM
-    keyboardListener.kill("SIGTERM");
-
-    // Give it a moment to terminate gracefully
-    setTimeout(() => {
-      if (keyboardListener && !keyboardListener.killed) {
-        console.log("[KEYBOARD] Force killing keyboard listener...");
-        keyboardListener.kill("SIGKILL");
-      }
-    }, 100);
-
+    try {
+      // Force kill immediately for clean quit
+      keyboardListener.kill("SIGKILL");
+      console.log("[KEYBOARD] Keyboard listener killed");
+    } catch (error) {
+      console.error("[KEYBOARD] Error killing listener:", error);
+    }
     keyboardListener = null;
   }
 }
@@ -1520,16 +1520,21 @@ app.whenReady().then(async () => {
 });
 
 app.on("window-all-closed", () => {
+  console.log("[APP] window-all-closed event fired");
   stopKeyboardListener();
-  if (process.platform !== "darwin") {
+  // On macOS, only quit if explicitly quitting (not just closing window)
+  if (process.platform !== "darwin" || app.isQuitting) {
     stopPermissionMonitoring();
     app.quit();
   }
 });
 
-app.on("before-quit", () => {
-  console.log("[APP] before-quit event fired");
+// Handle Cmd+Q and system-initiated quits properly
+app.on("before-quit", (event) => {
+  console.log("[APP] before-quit event fired, isQuitting:", app.isQuitting);
   app.isQuitting = true;
+
+  // Stop all background processes
   stopPermissionMonitoring();
   stopKeyboardListener();
 
@@ -1538,6 +1543,20 @@ app.on("before-quit", () => {
     logStream.end();
     logStream = null;
   }
+
+  // Destroy windows to ensure clean quit
+  if (pillWindow && !pillWindow.isDestroyed()) {
+    pillWindow.destroy();
+  }
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.close();
+  }
+});
+
+// Handle system-initiated quits (like from System Preferences "Quit and Reopen")
+app.on("will-quit", (event) => {
+  console.log("[APP] will-quit event fired, isQuitting:", app.isQuitting);
+  app.isQuitting = true;
 });
 
 app.on("activate", () => {
