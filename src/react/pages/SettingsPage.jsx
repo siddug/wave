@@ -172,7 +172,7 @@ const SettingsPage = () => {
       const result = await window.electronAPI.permissions.requestMicrophone();
 
       // Open microphone settings
-      toast("Opening Privacy Settings. Please enable microphone access for A1.");
+      toast("Opening Privacy Settings. Please enable microphone access for Wave.");
       await window.electronAPI.permissions.openMicrophoneSettings();
       
       // Check again after a delay to see if user granted permission
@@ -206,7 +206,7 @@ const SettingsPage = () => {
         await window.electronAPI?.app?.setStartAtLogin(value);
         saveSettings(newSettings);
         toast.success(
-          value ? "A1 will start at login" : "A1 will not start at login"
+          value ? "Wave will start at login" : "Wave will not start at login"
         );
       } catch (error) {
         toast.error("Failed to update start at login setting");
@@ -422,7 +422,7 @@ const SettingsPage = () => {
                 Start at Login
               </label>
               <p className="text-xs text-gray-600">
-                Automatically start A1 when you log in
+                Automatically start Wave when you log in
               </p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
@@ -630,7 +630,7 @@ const SettingsPage = () => {
 
       {/* App Info */}
       <h2 className="text-base font-medium text-gray-900 mt-4 mb-1">
-        About A1
+        About Wave
       </h2>
       <div className="bg-gray-50 rounded-lg p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">

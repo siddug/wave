@@ -10,6 +10,7 @@
     "start": "electron-forge start",
     "build": "vite build",
     "clean": "rimraf out dist build",
+    "clear-cache": "./clear-icon-cache.sh",
     "package": "npm run clean && npm run build && electron-forge package",
     "make": "npm run clean && npm run build && electron-forge make",
     "make:mac-x64": "npm run clean && npm run build && dotenv electron-forge make -- --arch=x64 --platform=darwin --targets=@electron-forge/maker-dmg",

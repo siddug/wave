@@ -224,7 +224,7 @@ const DashboardPage = () => {
       const result = await window.electronAPI.permissions.requestMicrophone();
 
       // Open microphone settings
-      toast("Opening Privacy Settings. Please enable microphone access for A1.");
+      toast("Opening Privacy Settings. Please enable microphone access for Wave.");
       await window.electronAPI.permissions.openMicrophoneSettings();
       
       // Check again after a delay to see if user granted permission

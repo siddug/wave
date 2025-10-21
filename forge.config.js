@@ -13,15 +13,35 @@ module.exports = {
         console.error('Build directory not found! Run "npm run build" first.');
         throw new Error('Build directory not found');
       }
-      
+
       // Check if index.html exists in build
       const indexPath = path.join(buildPath, 'index.html');
       if (!fs.existsSync(indexPath)) {
         console.error('index.html not found in build directory!');
         throw new Error('Build files not found');
       }
-      
+
       console.log('Build files found, proceeding with packaging...');
+    },
+    postPackage: async (forgeConfig, options) => {
+      // Post-package hook to ensure icon is properly set
+      if (process.platform === 'darwin') {
+        const { execSync } = require('child_process');
+        const appPath = path.join(options.outputPaths[0], 'Wave.app');
+
+        console.log('[POST-PACKAGE] Updating app bundle icon...');
+
+        // Touch the app to update modification time (helps macOS recognize changes)
+        try {
+          execSync(`touch "${appPath}"`);
+          console.log('[POST-PACKAGE] Updated app modification time');
+        } catch (error) {
+          console.warn('[POST-PACKAGE] Failed to touch app:', error.message);
+        }
+
+        console.log('[POST-PACKAGE] Icon setup complete');
+        console.log('[POST-PACKAGE] Note: If you see an old icon, run: npm run clear-cache');
+      }
     }
   },
   packagerConfig: {
@@ -71,7 +91,7 @@ module.exports = {
       /^\/create_dmg_bg\.py$/,
       /^\/buildResources\//,
     ],
-    icon: './src/assets/wave-logo',
+    icon: './src/assets/wave-logo.icns',
     // Code signing configuration
     osxSign: process.env.MAC_CODESIGN_IDENTITY ? {
       identity: process.env.MAC_CODESIGN_IDENTITY,

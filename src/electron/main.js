@@ -317,6 +317,8 @@ let isRecording = false;
 let isTranscribing = false;
 let recordingTimeout = null;
 let recordingStartTime = null;
+let lastKeyEventTime = 0;
+const KEY_EVENT_DEBOUNCE_MS = 300; // Ignore duplicate events within 300ms
 
 // Permission monitoring
 let permissionMonitorInterval = null;
@@ -401,6 +403,20 @@ function checkAndBroadcastPermissions() {
     ) {
       console.log("[PERMISSIONS] Permission state changed:", currentState);
 
+      // If accessibility permission just became granted and keyboard listener isn't running, start it
+      if (
+        currentState.accessibility &&
+        !lastPermissionState.accessibility &&
+        !keyboardListener
+      ) {
+        console.log(
+          "[PERMISSIONS] Accessibility just granted, starting keyboard listener..."
+        );
+        setTimeout(() => {
+          startKeyboardListener();
+        }, 1000);
+      }
+
       // Broadcast to all windows
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send("permissions:changed", currentState);
@@ -434,7 +450,7 @@ function createMainWindow() {
       height: 800,
       titleBarStyle: "hiddenInset", // Mac-style title bar with traffic lights
       icon: path.join(__dirname, "../../buildResources/icon.png"), // App icon
-      show: false, // Don't show until ready
+      show: true, // Show immediately to prevent window hiding on startup
       focusable: true,
       acceptFirstMouse: true,
       skipTaskbar: false,
@@ -445,10 +461,11 @@ function createMainWindow() {
       },
     });
 
-    // Show window when ready
+    // No need for ready-to-show since we show immediately
     mainWindow.once("ready-to-show", () => {
       console.log("[MAIN] Window ready to show");
-      mainWindow.show();
+      // Window is already shown, just ensure it's focused
+      mainWindow.focus();
     });
 
     // Handle load errors
@@ -480,6 +497,15 @@ function createMainWindow() {
         mainWindow.webContents.openDevTools();
       });
     }
+
+    // Prevent window from closing, just hide it instead
+    mainWindow.on("close", (event) => {
+      if (!app.isQuitting) {
+        event.preventDefault();
+        mainWindow.hide();
+        console.log("[MAIN] Window hidden instead of closed");
+      }
+    });
 
     mainWindow.on("closed", () => {
       mainWindow = null;
@@ -564,8 +590,11 @@ function createTray() {
       label: "Dashboard",
       click: () => {
         if (mainWindow) {
-          mainWindow.show();
+          if (!mainWindow.isVisible()) {
+            mainWindow.show();
+          }
           mainWindow.focus();
+          app.focus({ steal: true });
           mainWindow.webContents.send("navigate-to", "/dashboard");
         }
       },
@@ -574,8 +603,11 @@ function createTray() {
       label: "Models",
       click: () => {
         if (mainWindow) {
-          mainWindow.show();
+          if (!mainWindow.isVisible()) {
+            mainWindow.show();
+          }
           mainWindow.focus();
+          app.focus({ steal: true });
           mainWindow.webContents.send("navigate-to", "/models");
         }
       },
@@ -584,8 +616,11 @@ function createTray() {
       label: "Recordings",
       click: () => {
         if (mainWindow) {
-          mainWindow.show();
+          if (!mainWindow.isVisible()) {
+            mainWindow.show();
+          }
           mainWindow.focus();
+          app.focus({ steal: true });
           mainWindow.webContents.send("navigate-to", "/recordings");
         }
       },
@@ -594,8 +629,11 @@ function createTray() {
       label: "Settings",
       click: () => {
         if (mainWindow) {
-          mainWindow.show();
+          if (!mainWindow.isVisible()) {
+            mainWindow.show();
+          }
           mainWindow.focus();
+          app.focus({ steal: true });
           mainWindow.webContents.send("navigate-to", "/settings");
         }
       },
@@ -604,6 +642,10 @@ function createTray() {
     {
       label: "Quit",
       click: () => {
+        console.log("[TRAY] Quit clicked");
+        // Set quitting flag so window can close
+        app.isQuitting = true;
+
         // Stop all processes before quitting
         stopKeyboardListener();
         stopPermissionMonitoring();
@@ -628,16 +670,16 @@ function createTray() {
   tray.setToolTip("Wave Voice Transcription App");
 
   // Make tray icon clickable to show app
-  // tray.on('click', () => {
-  //   if (mainWindow) {
-  //     if (mainWindow.isVisible()) {
-  //       mainWindow.focus();
-  //     } else {
-  //       mainWindow.show();
-  //       mainWindow.focus();
-  //     }
-  //   }
-  // });
+  tray.on('click', () => {
+    console.log("[TRAY] Tray icon clicked");
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      if (!mainWindow.isVisible()) {
+        mainWindow.show();
+      }
+      mainWindow.focus();
+      app.focus({ steal: true });
+    }
+  });
 }
 
 const DEFAULT_SHORTCUTS = {
@@ -828,30 +870,60 @@ function handleKeyboardEvent(event) {
       settings.toggleShortcut = DEFAULT_SHORTCUTS.toggleShortcut;
     }
 
+    // Debounce duplicate key events
+    const now = Date.now();
+    const timeSinceLastEvent = now - lastKeyEventTime;
+
+    // For toggle shortcuts, only process keyDown events and debounce them
+    const isToggleShortcut = (
+      event.type === settings.toggleShortcut.start.type &&
+      event.keyCode === settings.toggleShortcut.start.keyCode &&
+      event.flags === settings.toggleShortcut.start.flags
+    );
+
+    if (isToggleShortcut && timeSinceLastEvent < KEY_EVENT_DEBOUNCE_MS) {
+      console.log(`[KEYBOARD] Ignoring duplicate toggle event (${timeSinceLastEvent}ms since last)`);
+      return;
+    }
+
     // now we are in the arena to decide when to start our pill
     if (!isRecording && !isTranscribing) {
+      console.log("[KEYBOARD] Not recording, checking if should start...");
+      console.log("[KEYBOARD] Event:", event);
+      console.log("[KEYBOARD] Expected toggle start:", settings.toggleShortcut.start);
+      console.log("[KEYBOARD] Expected hold start:", settings.holdShortcut.start);
+
       if (
         (event.type === settings.holdShortcut.start.type &&
           event.keyCode === settings.holdShortcut.start.keyCode &&
           event.flags === settings.holdShortcut.start.flags) ||
-        (event.type === settings.toggleShortcut.start.type &&
-          event.keyCode === settings.toggleShortcut.start.keyCode &&
-          event.flags === settings.toggleShortcut.start.flags)
+        isToggleShortcut
       ) {
         console.log("[KEYBOARD] Starting recording via keyboard shortcut");
+        if (isToggleShortcut) {
+          lastKeyEventTime = now; // Update last event time for toggle
+        }
         startRecording();
       }
     } else if (isRecording) {
+      console.log("[KEYBOARD] Currently recording, checking if should stop...");
+      console.log("[KEYBOARD] Event:", event);
+      console.log("[KEYBOARD] Expected toggle end:", settings.toggleShortcut.end);
+      console.log("[KEYBOARD] Expected hold end:", settings.holdShortcut.end);
+
       if (
         (event.type === settings.holdShortcut.end.type &&
           event.keyCode === settings.holdShortcut.end.keyCode &&
           event.flags === settings.holdShortcut.end.flags) ||
-        (event.type === settings.toggleShortcut.end.type &&
-          event.keyCode === settings.toggleShortcut.end.keyCode &&
-          event.flags === settings.toggleShortcut.end.flags)
+        isToggleShortcut
       ) {
         console.log("[KEYBOARD] Stopping recording via keyboard shortcut");
+        if (isToggleShortcut) {
+          lastKeyEventTime = now; // Update last event time for toggle
+        }
         stopRecording();
+      } else {
+        console.log("[KEYBOARD] Event did not match stop conditions");
       }
     }
   }
@@ -1379,16 +1451,22 @@ app.whenReady().then(async () => {
         hideRecordingPill();
       }
 
-      if (mainWindow) {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        console.log("[APP] Ensuring main window is visible and focused");
+        if (!mainWindow.isVisible()) {
+          mainWindow.show();
+        }
         mainWindow.focus();
-        mainWindow.show();
         app.focus({ steal: true });
+        app.dock.show();
       }
     }, 1000);
 
-    // Start keyboard listener if setup is complete
+    // Start keyboard listener if setup is complete OR if accessibility is granted (for tutorial)
     const isSetupComplete = store.get("setupComplete", false);
-    if (isSetupComplete) {
+    const accessibilityGranted = permissions.getAuthStatus("accessibility") === "authorized";
+
+    if (isSetupComplete || accessibilityGranted) {
       // Delay keyboard listener start to ensure accessibility permissions
       setTimeout(() => {
         startKeyboardListener();
@@ -1419,7 +1497,15 @@ app.whenReady().then(async () => {
     });
 
     setTimeout(() => {
-      if (mainWindow) {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        console.log("[APP] Navigating to initial page, setup complete:", isSetupComplete);
+        // Ensure window is visible before navigation
+        if (!mainWindow.isVisible()) {
+          mainWindow.show();
+        }
+        mainWindow.focus();
+        app.focus({ steal: true });
+
         if (isSetupComplete) {
           mainWindow.webContents.send("navigate-to", "/dashboard");
         } else {
@@ -1442,6 +1528,8 @@ app.on("window-all-closed", () => {
 });
 
 app.on("before-quit", () => {
+  console.log("[APP] before-quit event fired");
+  app.isQuitting = true;
   stopPermissionMonitoring();
   stopKeyboardListener();
 
@@ -1453,12 +1541,18 @@ app.on("before-quit", () => {
 });
 
 app.on("activate", () => {
+  console.log("[APP] Activate event triggered");
   app.setActivationPolicy("regular");
   if (BrowserWindow.getAllWindows().length === 0) {
+    console.log("[APP] No windows exist, creating main window");
     createMainWindow();
-  } else if (mainWindow) {
-    mainWindow.show();
+  } else if (mainWindow && !mainWindow.isDestroyed()) {
+    console.log("[APP] Main window exists, showing and focusing");
+    if (!mainWindow.isVisible()) {
+      mainWindow.show();
+    }
     mainWindow.focus();
+    app.focus({ steal: true });
   }
 });
 

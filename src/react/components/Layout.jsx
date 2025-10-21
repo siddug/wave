@@ -1,5 +1,6 @@
 import React from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
+import logoImage from '../assets/logo.png';
 
 const Layout = () => {
   const location = useLocation();
@@ -21,7 +22,7 @@ const Layout = () => {
         <div className="px-6 pt-8 pb-6 mt-6">
           <div className="flex items-center space-x-3">
             <img
-              src="/assets/logo.png"
+              src={logoImage}
               alt="Wave Logo"
               className="w-10 h-10 object-contain"
             />

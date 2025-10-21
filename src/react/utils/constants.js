@@ -128,7 +128,7 @@ const getShortcutToLabel = (shortcut) => {
 
   // Find all flag labels that match
   const flagLabelStr = Object.keys(flagLabels)
-    .filter((key) => flags & (flagLabels[key] == flags))
+    .filter((key) => (flags & flagLabels[key]) === flagLabels[key])
     .join(" + ");
 
   return flagLabelStr ? `${flagLabelStr} + ${keyLabel}` : `${keyLabel}`;

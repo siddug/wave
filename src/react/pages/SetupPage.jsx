@@ -77,8 +77,13 @@ const SetupPage = () => {
     loadModelStatus();
     loadLLMModelStatus();
     setupModelListeners();
-    setupRecordingListener();
   }, []);
+
+  // Setup recording listener - recreate when currentStep or tutorialStepStartTimes changes
+  useEffect(() => {
+    const cleanup = setupRecordingListener();
+    return cleanup;
+  }, [currentStep, tutorialStepStartTimes]);
 
   const loadModelStatus = async () => {
     try {
@@ -1014,6 +1019,10 @@ const SetupPage = () => {
         return Object.keys(llmModelStatus).some(
           (id) => llmModelStatus[id]?.selected
         );
+      case "tutorial1":
+        return !!tutorialRecordings.tutorial1;
+      case "tutorial2":
+        return !!tutorialRecordings.tutorial2;
       default:
         return true;
     }

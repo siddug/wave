@@ -94,7 +94,7 @@ class TextPaster {
         
         if let jsonData = try? JSONSerialization.data(withJSONObject: eventData, options: []) {
             if let jsonString = String(data: jsonData, encoding: .utf8) {
-                print("A1_EVENT:\(jsonString)")
+                print("WAVE_EVENT:\(jsonString)")
                 fflush(stdout)
             }
         }
