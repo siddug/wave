@@ -1,6 +1,8 @@
 const fs = require('fs').promises;
+const fsSync = require('fs');
 const path = require('path');
 const { app } = require('electron');
+const { execSync } = require('child_process');
 
 // Dynamically import whisper-node with error handling
 let whisper = null;
@@ -63,9 +65,42 @@ class WhisperService {
     }
   }
 
+  // Check available disk space on macOS
+  async checkDiskSpace() {
+    try {
+      // Use df command to check available space on macOS
+      const output = execSync(`df -k "${this.modelDir}" | tail -1 | awk '{print $4}'`, {
+        encoding: 'utf8'
+      });
+      const availableKB = parseInt(output.trim());
+      const availableBytes = availableKB * 1024;
+
+      console.log('[WHISPER] Available disk space:', (availableBytes / (1024 * 1024 * 1024)).toFixed(2), 'GB');
+
+      return availableBytes;
+    } catch (error) {
+      console.error('[WHISPER] Failed to check disk space:', error);
+      // Return a conservative estimate if check fails
+      return 10 * 1024 * 1024 * 1024; // Assume 10GB available
+    }
+  }
+
   async downloadModel(modelId, progressCallback) {
+    // Check if already downloading (with more detailed logging)
     if (this.activeDownloads.has(modelId)) {
-      throw new Error(`Model ${modelId} is already being downloaded`);
+      const existingDownload = this.activeDownloads.get(modelId);
+      console.log(`[WHISPER] Existing download found for ${modelId}:`, {
+        cancelled: existingDownload?.cancelled,
+        hasAbortController: !!existingDownload?.abortController,
+      });
+
+      if (existingDownload && !existingDownload.cancelled) {
+        console.log(`[WHISPER] Download already active for ${modelId}, rejecting`);
+        throw new Error(`Model ${modelId} is already being downloaded`);
+      } else if (existingDownload && existingDownload.cancelled) {
+        console.log(`[WHISPER] Previous download was cancelled, cleaning up for ${modelId}`);
+        this.activeDownloads.delete(modelId);
+      }
     }
 
     const model = this.availableModels[modelId];
@@ -74,16 +109,40 @@ class WhisperService {
     }
 
     const modelPath = path.join(this.modelDir, model.filename);
-    
+
     // Check if model already exists
     try {
       await fs.access(modelPath);
+      console.log(`[WHISPER] Model ${modelId} already exists at ${modelPath}`);
       return { success: true, path: modelPath, message: 'Model already exists' };
     } catch {
       // Model doesn't exist, proceed with download
+      console.log(`[WHISPER] Model ${modelId} does not exist, proceeding with download`);
     }
 
-    this.activeDownloads.set(modelId, true);
+    // Check available disk space before downloading
+    const availableSpace = await this.checkDiskSpace();
+    const requiredSpace = model.size * 1.2; // Add 20% buffer for safety
+
+    if (availableSpace < requiredSpace) {
+      const availableGB = (availableSpace / (1024 * 1024 * 1024)).toFixed(2);
+      const requiredGB = (requiredSpace / (1024 * 1024 * 1024)).toFixed(2);
+
+      throw new Error(
+        `Insufficient disk space. Available: ${availableGB} GB, Required: ${requiredGB} GB`
+      );
+    }
+
+    // Create download tracking object with AbortController
+    const downloadInfo = {
+      modelId,
+      cancelled: false,
+      abortController: new AbortController(),
+      startTime: Date.now()
+    };
+
+    console.log(`[WHISPER] Setting download info for ${modelId}`);
+    this.activeDownloads.set(modelId, downloadInfo);
 
     try {
       // For development/testing, simulate download with fake file creation
@@ -115,8 +174,13 @@ class WhisperService {
         };
       }
 
-      // Real download implementation
-      const response = await fetch(model.url);
+      // Real download implementation with AbortController
+      console.log(`[WHISPER] Starting download for ${modelId}: ${model.url}`);
+
+      const response = await fetch(model.url, {
+        signal: downloadInfo.abortController.signal
+      });
+
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
@@ -128,47 +192,61 @@ class WhisperService {
       const stream = fileHandle.createWriteStream();
 
       const reader = response.body.getReader();
-      
+
       try {
         while (true) {
+          // Check if download was cancelled
+          if (downloadInfo.cancelled || downloadInfo.abortController.signal.aborted) {
+            throw new Error('Download cancelled');
+          }
+
           const { done, value } = await reader.read();
-          
+
           if (done) break;
-          
+
           downloadedSize += value.length;
           stream.write(value);
-          
+
           const progress = Math.round((downloadedSize / totalSize) * 100);
-          if (progressCallback) {
+          if (progressCallback && !downloadInfo.cancelled) {
             progressCallback({ modelId, progress, downloadedSize, totalSize });
           }
         }
-        
+
         await stream.end();
         await fileHandle.close();
-        
+
         this.activeDownloads.delete(modelId);
-        
-        return { 
-          success: true, 
-          path: modelPath, 
-          message: `Successfully downloaded ${model.name}` 
+
+        console.log(`[WHISPER] Download completed for ${modelId}`);
+
+        return {
+          success: true,
+          path: modelPath,
+          message: `Successfully downloaded ${model.name}`
         };
-        
+
       } catch (error) {
         await stream.destroy();
         await fileHandle.close();
-        
+
         // Clean up partial download
         try {
           await fs.unlink(modelPath);
         } catch {}
-        
+
         throw error;
       }
       
     } catch (error) {
       this.activeDownloads.delete(modelId);
+
+      if (error.name === 'AbortError' || error.message === 'Download cancelled') {
+        console.log(`[WHISPER] Download cancelled for ${modelId}`);
+        throw new Error(`Download cancelled for ${model.name}`);
+      }
+
+      console.error(`[WHISPER] Download failed for ${modelId}:`, error);
       throw new Error(`Failed to download ${model.name}: ${error.message}`);
     }
   }
@@ -285,13 +363,17 @@ class WhisperService {
   }
 
   isDownloading(modelId) {
-    return this.activeDownloads.has(modelId);
+    const downloadInfo = this.activeDownloads.get(modelId);
+    return downloadInfo && !downloadInfo.cancelled;
   }
 
   cancelDownload(modelId) {
-    this.activeDownloads.delete(modelId);
-    // Note: This is a simple cancellation. In a production app, 
-    // you might want to actually abort the fetch request
+    const downloadInfo = this.activeDownloads.get(modelId);
+    if (downloadInfo) {
+      downloadInfo.cancelled = true;
+      downloadInfo.abortController.abort();
+      console.log(`[WHISPER] Cancelled download for ${modelId}`);
+    }
   }
 
   getAvailableModels() {

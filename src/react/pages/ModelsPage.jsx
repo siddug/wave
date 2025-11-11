@@ -127,17 +127,21 @@ const ModelsPage = () => {
   const [selectedLLMModel, setSelectedLLMModel] = useState('');
   const [isTestingInference, setIsTestingInference] = useState(false);
 
+  // Load initial data on mount only
   useEffect(() => {
     loadModelStatus();
     loadSelectedModel();
     loadLLMModelStatus();
     loadSelectedLLMModel();
+  }, []); // Empty dependency array - only run once on mount
 
+  // Set up event listeners separately to avoid recreation
+  useEffect(() => {
     // Listen for model events
     const unsubscribeProgress = window.electronAPI?.models?.onDownloadProgress((data) => {
-      setModels(prevModels => 
-        prevModels.map(model => 
-          model.id === data.modelId 
+      setModels(prevModels =>
+        prevModels.map(model =>
+          model.id === data.modelId
             ? { ...model, progress: data.progress }
             : model
         )
@@ -229,7 +233,7 @@ const ModelsPage = () => {
       if (unsubscribeLLMProgress) unsubscribeLLMProgress();
       if (unsubscribeLLMComplete) unsubscribeLLMComplete();
     };
-  }, [selectedModel]);
+  }, []); // Empty dependency array - listeners don't need to change
 
   const loadModelStatus = async () => {
     try {

@@ -18,9 +18,11 @@ const ffmpeg = require("fluent-ffmpeg");
 const ffmpegStatic = require("ffmpeg-static");
 const AudioService = require("./audioService");
 
-// Set ffmpeg path for fluent-ffmpeg
+// Set ffmpeg path for fluent-ffmpeg with early detection
 console.log("[FFMPEG] Configuring ffmpeg...");
 console.log("[FFMPEG] ffmpegStatic path:", ffmpegStatic);
+
+let ffmpegConfigured = false;
 
 if (ffmpegStatic) {
   // In production, the path might need adjustment
@@ -35,9 +37,10 @@ if (ffmpegStatic) {
   // Check if the binary exists
   if (fsSync.existsSync(ffmpegPath)) {
     ffmpeg.setFfmpegPath(ffmpegPath);
-    console.log("[FFMPEG] Using bundled ffmpeg from:", ffmpegPath);
+    console.log("[FFMPEG] ✓ Using bundled ffmpeg from:", ffmpegPath);
+    ffmpegConfigured = true;
   } else {
-    console.error("[FFMPEG] ffmpeg binary not found at:", ffmpegPath);
+    console.error("[FFMPEG] ✗ ffmpeg binary not found at:", ffmpegPath);
     // Try to find it in the unpacked directory
     const unpackedPath = path.join(
       process.resourcesPath,
@@ -45,13 +48,33 @@ if (ffmpegStatic) {
     );
     if (fsSync.existsSync(unpackedPath)) {
       ffmpeg.setFfmpegPath(unpackedPath);
-      console.log("[FFMPEG] Found ffmpeg at unpacked path:", unpackedPath);
+      console.log("[FFMPEG] ✓ Found ffmpeg at unpacked path:", unpackedPath);
+      ffmpegConfigured = true;
     } else {
-      console.error("[FFMPEG] Could not find ffmpeg binary");
+      console.error("[FFMPEG] ✗ Could not find ffmpeg at unpacked path:", unpackedPath);
     }
   }
 } else {
-  console.error("[FFMPEG] ffmpeg-static module not found");
+  console.error("[FFMPEG] ✗ ffmpeg-static module not found");
+}
+
+// Final check - fail fast if FFmpeg not found
+if (!ffmpegConfigured) {
+  const errorMsg = "[FFMPEG] CRITICAL ERROR: FFmpeg not found. Audio transcription will fail. Please reinstall the application.";
+  console.error(errorMsg);
+
+  // Show error dialog to user in production
+  if (!isDev) {
+    const { dialog } = require('electron');
+    setTimeout(() => {
+      dialog.showErrorBox(
+        'FFmpeg Not Found',
+        'The application is missing a required component (FFmpeg) needed for audio processing. Please reinstall Wave.\n\nTranscription features will not work until this is resolved.'
+      );
+    }, 2000); // Delay to ensure app window is ready
+  }
+} else {
+  console.log("[FFMPEG] ✓ FFmpeg configuration successful");
 }
 
 const store = new Store();
@@ -156,8 +179,8 @@ const audioService = new AudioService(store);
 const LLMService = require("./llmService");
 const llmService = new LLMService();
 
-// LLM post-processing function for transcripts
-async function processTranscriptWithLLM(originalText) {
+// LLM post-processing function for transcripts with timeout protection
+async function processTranscriptWithLLM(originalText, timeoutMs = 30000) {
   console.log("[LLM-PROCESSING] Starting transcript post-processing");
   console.log(
     "[LLM-PROCESSING] Original text length:",
@@ -167,6 +190,7 @@ async function processTranscriptWithLLM(originalText) {
     "[LLM-PROCESSING] Original text preview:",
     originalText?.substring(0, 100) || "EMPTY"
   );
+  console.log("[LLM-PROCESSING] Timeout set to:", timeoutMs, "ms");
 
   // Check if original text is empty or too short
   if (!originalText || originalText.trim().length < 3) {
@@ -252,14 +276,26 @@ ${originalText}`;
       prompt,
     });
 
-    // Generate response with reasonable limits
+    // Generate response with timeout protection
     let llmResult;
     try {
-      llmResult = await llmService.generateResponse(prompt, {
-        temperature: 0.3, // Lower temperature for more consistent formatting
-        maxTokens: Math.max(originalText.length * 2, 512), // Allow room for formatting
-        topP: 0.8,
+      // Create a timeout promise
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => {
+          reject(new Error(`LLM processing timeout after ${timeoutMs}ms`));
+        }, timeoutMs);
       });
+
+      // Race between LLM generation and timeout
+      llmResult = await Promise.race([
+        llmService.generateResponse(prompt, {
+          temperature: 0.3, // Lower temperature for more consistent formatting
+          maxTokens: Math.max(originalText.length * 2, 512), // Allow room for formatting
+          topP: 0.8,
+        }),
+        timeoutPromise
+      ]);
+
       console.log("[LLM-PROCESSING] LLM generation result:", {
         success: llmResult?.success,
         hasResponse: !!llmResult?.response,
@@ -267,11 +303,19 @@ ${originalText}`;
       });
     } catch (genError) {
       console.error("[LLM-PROCESSING] Error during generation:", genError);
+
+      // Check if it's a timeout error
+      const isTimeout = genError.message?.includes('timeout');
+      console.warn(
+        `[LLM-PROCESSING] ${isTimeout ? 'Timeout' : 'Error'} - falling back to original transcript`
+      );
+
       return {
         success: true,
         text: originalText,
         processed: false,
         error: genError.message,
+        timeout: isTimeout,
       };
     }
 
@@ -318,7 +362,10 @@ let isTranscribing = false;
 let recordingTimeout = null;
 let recordingStartTime = null;
 let lastKeyEventTime = 0;
+let transcriptionWatchdog = null; // Watchdog for stuck transcription state
+let recordingShortcutMode = null; // Track which shortcut started recording: 'hold' or 'toggle'
 const KEY_EVENT_DEBOUNCE_MS = 300; // Ignore duplicate events within 300ms
+const TRANSCRIPTION_WATCHDOG_MS = 3000; // 3 seconds max for transcription to start
 
 // Permission monitoring
 let permissionMonitorInterval = null;
@@ -326,6 +373,10 @@ let lastPermissionState = {
   accessibility: null,
   microphone: null,
 };
+let permissionCheckCount = 0;
+const INITIAL_CHECK_INTERVAL = 2000; // Check frequently during setup (2s)
+const NORMAL_CHECK_INTERVAL = 10000; // Check less frequently once stable (10s)
+const CHECKS_BEFORE_SLOWDOWN = 10; // After 10 checks (~20s), slow down if permissions are stable
 
 // Sound playing function
 function playSound(soundName) {
@@ -367,23 +418,42 @@ function playSound(soundName) {
   }
 }
 
-// Permission monitoring system
+// Permission monitoring system with adaptive polling
 function startPermissionMonitoring() {
   console.log("[PERMISSIONS] Starting permission monitoring...");
 
   // Check immediately on start
   checkAndBroadcastPermissions();
 
-  // Then check every 2 seconds
-  permissionMonitorInterval = setInterval(() => {
-    checkAndBroadcastPermissions();
-  }, 2000);
+  // Start with frequent checks (2s), then slow down to 10s after things stabilize
+  let currentInterval = INITIAL_CHECK_INTERVAL;
+
+  const scheduleNextCheck = () => {
+    permissionMonitorInterval = setTimeout(() => {
+      checkAndBroadcastPermissions();
+      permissionCheckCount++;
+
+      // Slow down polling after initial checks if both permissions are granted
+      if (permissionCheckCount >= CHECKS_BEFORE_SLOWDOWN) {
+        const bothGranted = lastPermissionState.accessibility && lastPermissionState.microphone;
+        if (bothGranted && currentInterval === INITIAL_CHECK_INTERVAL) {
+          currentInterval = NORMAL_CHECK_INTERVAL;
+          console.log("[PERMISSIONS] Both permissions granted, reducing check frequency to", NORMAL_CHECK_INTERVAL, "ms");
+        }
+      }
+
+      scheduleNextCheck();
+    }, currentInterval);
+  };
+
+  scheduleNextCheck();
 }
 
 function stopPermissionMonitoring() {
   if (permissionMonitorInterval) {
-    clearInterval(permissionMonitorInterval);
+    clearTimeout(permissionMonitorInterval);
     permissionMonitorInterval = null;
+    permissionCheckCount = 0;
     console.log("[PERMISSIONS] Stopped permission monitoring");
   }
 }
@@ -397,11 +467,15 @@ function checkAndBroadcastPermissions() {
     };
 
     // Check if permissions changed
-    if (
+    const permissionsChanged =
       lastPermissionState.accessibility !== currentState.accessibility ||
-      lastPermissionState.microphone !== currentState.microphone
-    ) {
+      lastPermissionState.microphone !== currentState.microphone;
+
+    if (permissionsChanged) {
       console.log("[PERMISSIONS] Permission state changed:", currentState);
+
+      // Reset check count on change to monitor more frequently again
+      permissionCheckCount = 0;
 
       // If accessibility permission just became granted and keyboard listener isn't running, start it
       if (
@@ -770,11 +844,30 @@ function stopKeyboardListener() {
   if (keyboardListener) {
     console.log("[KEYBOARD] Stopping keyboard listener...");
     try {
-      // Force kill immediately for clean quit
-      keyboardListener.kill("SIGKILL");
-      console.log("[KEYBOARD] Keyboard listener killed");
+      // Try graceful termination first with SIGTERM
+      keyboardListener.kill("SIGTERM");
+      console.log("[KEYBOARD] Sent SIGTERM to keyboard listener");
+
+      // Set a fallback timeout to force kill if graceful shutdown fails
+      const forceKillTimeout = setTimeout(() => {
+        if (keyboardListener && !keyboardListener.killed) {
+          console.warn("[KEYBOARD] Graceful shutdown timeout, force killing...");
+          try {
+            keyboardListener.kill("SIGKILL");
+          } catch (e) {
+            console.error("[KEYBOARD] Error force killing:", e);
+          }
+        }
+      }, 2000); // 2 second grace period
+
+      // Clear timeout if process exits cleanly
+      keyboardListener.once('exit', () => {
+        clearTimeout(forceKillTimeout);
+        console.log("[KEYBOARD] Keyboard listener exited cleanly");
+      });
+
     } catch (error) {
-      console.error("[KEYBOARD] Error killing listener:", error);
+      console.error("[KEYBOARD] Error stopping listener:", error);
     }
     keyboardListener = null;
   }
@@ -870,60 +963,85 @@ function handleKeyboardEvent(event) {
       settings.toggleShortcut = DEFAULT_SHORTCUTS.toggleShortcut;
     }
 
-    // Debounce duplicate key events
+    // Identify shortcut types
     const now = Date.now();
     const timeSinceLastEvent = now - lastKeyEventTime;
 
-    // For toggle shortcuts, only process keyDown events and debounce them
     const isToggleShortcut = (
       event.type === settings.toggleShortcut.start.type &&
       event.keyCode === settings.toggleShortcut.start.keyCode &&
       event.flags === settings.toggleShortcut.start.flags
     );
 
-    if (isToggleShortcut && timeSinceLastEvent < KEY_EVENT_DEBOUNCE_MS) {
-      console.log(`[KEYBOARD] Ignoring duplicate toggle event (${timeSinceLastEvent}ms since last)`);
-      return;
+    const isHoldShortcutStart = (
+      event.type === settings.holdShortcut.start.type &&
+      event.keyCode === settings.holdShortcut.start.keyCode &&
+      event.flags === settings.holdShortcut.start.flags
+    );
+
+    const isHoldShortcutEnd = (
+      event.type === settings.holdShortcut.end.type &&
+      event.keyCode === settings.holdShortcut.end.keyCode &&
+      event.flags === settings.holdShortcut.end.flags
+    );
+
+    // If currently recording, check if we should stop (higher priority than debouncing)
+    if (isRecording) {
+      console.log("[KEYBOARD] Currently recording, checking if should stop...");
+      console.log("[KEYBOARD] Event:", event);
+      console.log("[KEYBOARD] Recording mode:", recordingShortcutMode);
+      console.log("[KEYBOARD] Expected toggle:", settings.toggleShortcut.start);
+      console.log("[KEYBOARD] Expected hold end:", settings.holdShortcut.end);
+
+      // Stop recording only if the correct shortcut type is used
+      let shouldStop = false;
+
+      if (recordingShortcutMode === 'hold' && isHoldShortcutEnd) {
+        // Hold mode: stop on hold shortcut END (release)
+        console.log("[KEYBOARD] Hold mode: Stopping on hold shortcut release");
+        shouldStop = true;
+      } else if (recordingShortcutMode === 'toggle' && isToggleShortcut) {
+        // Toggle mode: stop on toggle shortcut press (same as start)
+        // Apply debounce to prevent stopping on key release events
+        if (timeSinceLastEvent < KEY_EVENT_DEBOUNCE_MS) {
+          console.log(`[KEYBOARD] Ignoring duplicate toggle stop event (${timeSinceLastEvent}ms since last)`);
+          return;
+        }
+        console.log("[KEYBOARD] Toggle mode: Stopping on toggle shortcut press");
+        lastKeyEventTime = now; // Update last event time for toggle
+        shouldStop = true;
+      }
+
+      if (shouldStop) {
+        stopRecording();
+      } else {
+        console.log("[KEYBOARD] Event did not match stop conditions for current mode");
+      }
+      return; // Exit early after handling recording stop
     }
 
-    // now we are in the arena to decide when to start our pill
+    // Not recording - check if we should start (apply debouncing here)
     if (!isRecording && !isTranscribing) {
+      // Debounce toggle shortcuts to prevent accidental double-press
+      if (isToggleShortcut && timeSinceLastEvent < KEY_EVENT_DEBOUNCE_MS) {
+        console.log(`[KEYBOARD] Ignoring duplicate toggle event (${timeSinceLastEvent}ms since last)`);
+        return;
+      }
+
       console.log("[KEYBOARD] Not recording, checking if should start...");
       console.log("[KEYBOARD] Event:", event);
       console.log("[KEYBOARD] Expected toggle start:", settings.toggleShortcut.start);
       console.log("[KEYBOARD] Expected hold start:", settings.holdShortcut.start);
 
-      if (
-        (event.type === settings.holdShortcut.start.type &&
-          event.keyCode === settings.holdShortcut.start.keyCode &&
-          event.flags === settings.holdShortcut.start.flags) ||
-        isToggleShortcut
-      ) {
-        console.log("[KEYBOARD] Starting recording via keyboard shortcut");
-        if (isToggleShortcut) {
-          lastKeyEventTime = now; // Update last event time for toggle
-        }
+      if (isHoldShortcutStart) {
+        console.log("[KEYBOARD] Starting recording via hold shortcut");
+        recordingShortcutMode = 'hold';
         startRecording();
-      }
-    } else if (isRecording) {
-      console.log("[KEYBOARD] Currently recording, checking if should stop...");
-      console.log("[KEYBOARD] Event:", event);
-      console.log("[KEYBOARD] Expected toggle end:", settings.toggleShortcut.end);
-      console.log("[KEYBOARD] Expected hold end:", settings.holdShortcut.end);
-
-      if (
-        (event.type === settings.holdShortcut.end.type &&
-          event.keyCode === settings.holdShortcut.end.keyCode &&
-          event.flags === settings.holdShortcut.end.flags) ||
-        isToggleShortcut
-      ) {
-        console.log("[KEYBOARD] Stopping recording via keyboard shortcut");
-        if (isToggleShortcut) {
-          lastKeyEventTime = now; // Update last event time for toggle
-        }
-        stopRecording();
-      } else {
-        console.log("[KEYBOARD] Event did not match stop conditions");
+      } else if (isToggleShortcut) {
+        console.log("[KEYBOARD] Starting recording via toggle shortcut");
+        recordingShortcutMode = 'toggle';
+        lastKeyEventTime = now; // Update last event time for toggle
+        startRecording();
       }
     }
   }
@@ -993,8 +1111,30 @@ async function startRecording() {
 
 async function stopRecording() {
   console.log("[RECORDING] Stopping recording...");
+
+  // Calculate how long recording has been running
+  const recordingDuration = recordingStartTime ? Date.now() - recordingStartTime : 0;
+  const MIN_RECORDING_DURATION = 500; // Minimum 500ms before we can stop
+
+  // If recording started very recently (< 500ms), wait a bit to let it fully initialize
+  if (recordingDuration < MIN_RECORDING_DURATION) {
+    const waitTime = MIN_RECORDING_DURATION - recordingDuration;
+    console.log(`[RECORDING] Recording too new (${recordingDuration}ms), waiting ${waitTime}ms for initialization...`);
+    await new Promise(resolve => setTimeout(resolve, waitTime));
+  }
+
   isRecording = false;
   isTranscribing = true;
+
+  // Start watchdog timer - if we don't receive audio data within 3 seconds, something is stuck
+  if (transcriptionWatchdog) {
+    clearTimeout(transcriptionWatchdog);
+  }
+  transcriptionWatchdog = setTimeout(() => {
+    console.error("[RECORDING] Transcription watchdog triggered - pill didn't respond to stop command");
+    console.log("[RECORDING] Force resetting recording state due to stuck transcription");
+    forceResetRecordingState();
+  }, TRANSCRIPTION_WATCHDOG_MS);
 
   // Keep pill visible but update to processing state
   updateRecordingState({ recording: false, transcribing: true });
@@ -1192,10 +1332,43 @@ async function transcribeAudio({ audioBuffer, modelId }) {
 
     console.log("[TRANSCRIBE] Transcription result:", transcription);
 
-    // Clear timeout since recording completed successfully
+    // Check if transcription is empty or too short
+    if (!transcription || transcription.trim().length === 0) {
+      console.warn("[TRANSCRIBE] Transcription is empty - no speech detected");
+
+      // Clear timeouts
+      if (recordingTimeout) {
+        clearTimeout(recordingTimeout);
+        recordingTimeout = null;
+      }
+      if (transcriptionWatchdog) {
+        clearTimeout(transcriptionWatchdog);
+        transcriptionWatchdog = null;
+      }
+
+      updateRecordingState({ recording: false, transcribing: false });
+      isTranscribing = false;
+      recordingShortcutMode = null; // Clear shortcut mode
+
+      return {
+        success: false,
+        error: "No speech detected in recording. Please try again and speak clearly.",
+        empty: true
+      };
+    }
+
+    if (transcription.trim().length < 3) {
+      console.warn("[TRANSCRIBE] Transcription is very short:", transcription);
+    }
+
+    // Clear all timeouts since recording completed successfully
     if (recordingTimeout) {
       clearTimeout(recordingTimeout);
       recordingTimeout = null;
+    }
+    if (transcriptionWatchdog) {
+      clearTimeout(transcriptionWatchdog);
+      transcriptionWatchdog = null;
     }
 
     updateRecordingState({ recording: false, transcribing: false });
@@ -1211,11 +1384,16 @@ async function transcribeAudio({ audioBuffer, modelId }) {
 
     // Reset state and hide pill on error too
     isTranscribing = false;
+    recordingShortcutMode = null; // Clear shortcut mode
 
-    // Clear timeout on error as well
+    // Clear all timeouts on error
     if (recordingTimeout) {
       clearTimeout(recordingTimeout);
       recordingTimeout = null;
+    }
+    if (transcriptionWatchdog) {
+      clearTimeout(transcriptionWatchdog);
+      transcriptionWatchdog = null;
     }
 
     updateRecordingState({ recording: false, transcribing: false });
@@ -1288,9 +1466,38 @@ async function saveRecording({
 
     // Calculate recording duration
     const recordingEndTime = Date.now();
-    const duration = recordingStartTime
-      ? (recordingEndTime - recordingStartTime) / 1000
-      : 0;
+    let duration = 0;
+
+    if (recordingStartTime) {
+      duration = (recordingEndTime - recordingStartTime) / 1000;
+    } else {
+      console.warn(
+        "[SAVE] recordingStartTime is null - using timestamp as fallback"
+      );
+      // Try to estimate duration from timestamp
+      if (timestamp) {
+        duration = (recordingEndTime - timestamp) / 1000;
+      } else {
+        console.error(
+          "[SAVE] Both recordingStartTime and timestamp are invalid - duration will be 0"
+        );
+        // Set a flag to indicate this recording has invalid duration
+        duration = 0;
+      }
+    }
+
+    // Validate duration is reasonable (not negative, not too long)
+    if (duration < 0) {
+      console.error("[SAVE] Invalid negative duration, setting to 0");
+      duration = 0;
+    } else if (duration > 600) {
+      // More than 10 minutes is suspicious
+      console.warn(
+        "[SAVE] Suspiciously long duration:",
+        duration,
+        "seconds - possible timing error"
+      );
+    }
 
     console.log("[SAVE] Duration calculation:", {
       recordingStartTime,
@@ -1364,15 +1571,20 @@ function forceResetRecordingState() {
     "to null"
   );
 
-  // Clear timeout
+  // Clear all timeouts
   if (recordingTimeout) {
     clearTimeout(recordingTimeout);
     recordingTimeout = null;
+  }
+  if (transcriptionWatchdog) {
+    clearTimeout(transcriptionWatchdog);
+    transcriptionWatchdog = null;
   }
 
   isRecording = false;
   isTranscribing = false;
   recordingStartTime = null;
+  recordingShortcutMode = null; // Clear shortcut mode
   updateRecordingState({ recording: false, transcribing: false });
 
   // Force hide pill using speak repo method
@@ -1706,6 +1918,13 @@ ipcMain.handle("recording:audio-ready", async (event, audioBuffer) => {
     recordingStartTime
   );
 
+  // Clear the transcription watchdog - pill responded successfully
+  if (transcriptionWatchdog) {
+    clearTimeout(transcriptionWatchdog);
+    transcriptionWatchdog = null;
+    console.log("[RECORDING] Cleared transcription watchdog - pill responded");
+  }
+
   try {
     // Get selected model
     const selectedModel = store.get("selectedModel");
@@ -1725,6 +1944,13 @@ ipcMain.handle("recording:audio-ready", async (event, audioBuffer) => {
         "[RECORDING] Transcription length:",
         result.text?.length || 0
       );
+
+      // Warn if transcription is suspiciously short
+      if (result.text && result.text.trim().length < 10) {
+        console.warn(
+          "[RECORDING] Warning: Very short transcription. Audio may have been unclear or too quiet."
+        );
+      }
 
       // Process transcript with LLM if available (keep transcribing state)
       console.log("[RECORDING] Starting LLM processing...");
@@ -1802,7 +2028,22 @@ ipcMain.handle("recording:audio-ready", async (event, audioBuffer) => {
       }
     } else {
       console.error("[RECORDING] Transcription failed:", result.error);
+
+      // Provide user-friendly error message
+      if (result.empty) {
+        console.log("[RECORDING] No speech detected - providing user feedback");
+        // Broadcast error to UI
+        if (mainWindow) {
+          mainWindow.webContents.send("recording-error", {
+            error: result.error,
+            type: "empty_transcription"
+          });
+        }
+      }
     }
+
+    // Clear shortcut mode after recording completes
+    recordingShortcutMode = null;
 
     // Hide pill after all processing is complete
     console.log("[RECORDING] Hiding pill window after all processing");
@@ -1811,6 +2052,9 @@ ipcMain.handle("recording:audio-ready", async (event, audioBuffer) => {
     return result;
   } catch (error) {
     console.error("[RECORDING] Error processing audio:", error);
+
+    // Clear shortcut mode on error
+    recordingShortcutMode = null;
 
     // Hide pill on error too
     hideRecordingPill();

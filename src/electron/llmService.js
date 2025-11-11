@@ -1,6 +1,7 @@
 const fs = require('fs').promises;
 const path = require('path');
 const { app } = require('electron');
+const { execSync } = require('child_process');
 
 // Dynamically import node-llama-cpp with error handling
 let { Llama, LlamaModel, LlamaContext, LlamaChatSession, getLlama } = {};
@@ -130,6 +131,26 @@ class LLMService {
     }
   }
 
+  // Check available disk space on macOS
+  async checkDiskSpace() {
+    try {
+      // Use df command to check available space on macOS
+      const output = execSync(`df -k "${this.modelDir}" | tail -1 | awk '{print $4}'`, {
+        encoding: 'utf8'
+      });
+      const availableKB = parseInt(output.trim());
+      const availableBytes = availableKB * 1024;
+
+      console.log('[LLM] Available disk space:', (availableBytes / (1024 * 1024 * 1024)).toFixed(2), 'GB');
+
+      return availableBytes;
+    } catch (error) {
+      console.error('[LLM] Failed to check disk space:', error);
+      // Return a conservative estimate if check fails
+      return 10 * 1024 * 1024 * 1024; // Assume 10GB available
+    }
+  }
+
   async downloadModel(modelId, progressCallback) {
     console.log(`[LLM] Download requested for ${modelId}`);
     
@@ -157,7 +178,7 @@ class LLMService {
     }
 
     const modelPath = path.join(this.modelDir, model.filename);
-    
+
     // Check if model already exists
     try {
       await fs.access(modelPath);
@@ -166,6 +187,19 @@ class LLMService {
     } catch {
       // Model doesn't exist, proceed with download
       console.log(`[LLM] Model ${modelId} does not exist, proceeding with download`);
+    }
+
+    // Check available disk space before downloading
+    const availableSpace = await this.checkDiskSpace();
+    const requiredSpace = model.size * 1.2; // Add 20% buffer for safety
+
+    if (availableSpace < requiredSpace) {
+      const availableGB = (availableSpace / (1024 * 1024 * 1024)).toFixed(2);
+      const requiredGB = (requiredSpace / (1024 * 1024 * 1024)).toFixed(2);
+
+      throw new Error(
+        `Insufficient disk space. Available: ${availableGB} GB, Required: ${requiredGB} GB`
+      );
     }
 
     // Create download tracking object - do this IMMEDIATELY to prevent race conditions

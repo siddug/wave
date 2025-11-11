@@ -64,6 +64,19 @@ const RecordingPill = () => {
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
 
+  // Use refs to track state without triggering re-renders
+  const recordingRef = useRef(false);
+  const processingRef = useRef(false);
+
+  // Sync refs with state
+  useEffect(() => {
+    recordingRef.current = recording;
+  }, [recording]);
+
+  useEffect(() => {
+    processingRef.current = processing;
+  }, [processing]);
+
   // Listen for recording state updates from main process
   useEffect(() => {
     if (!window.electronAPI?.recording?.onStateUpdate) return;
@@ -72,19 +85,23 @@ const RecordingPill = () => {
       (state) => {
         console.log("[PILL] Recording state update:", state);
 
+        // Use refs for comparison to avoid dependency loop
+        const currentRecording = recordingRef.current;
+        const currentProcessing = processingRef.current;
+
         // Always sync state immediately to prevent stuck states
         setRecording(state.recording || false);
         setProcessing(state.transcribing || false);
 
-        if (state.recording && !recording) {
+        if (state.recording && !currentRecording) {
           startRecording();
-        } else if (state.transcribing && recording) {
+        } else if (state.transcribing && currentRecording) {
           // Stop recording and start processing
           stopRecording();
         } else if (
           !state.recording &&
           !state.transcribing &&
-          (recording || processing)
+          (currentRecording || currentProcessing)
         ) {
           // Recording complete - reset state and cleanup
           cleanup();
@@ -104,7 +121,7 @@ const RecordingPill = () => {
       if (unsubscribeState) unsubscribeState();
       if (unsubscribeStop) unsubscribeStop();
     };
-  }, [recording, processing]);
+  }, []); // Empty dependency array - only set up listeners once
 
   // Start recording - triggered by state change from main
   const startRecording = async () => {
