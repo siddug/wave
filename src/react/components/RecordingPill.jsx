@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from "react";
 
-// Animated AudioWave for recording state
+// Animated AudioWave for recording state - Locus themed
 const AudioWave = ({ smaller = false }) => {
   const [phase, setPhase] = useState(0);
 
@@ -12,13 +12,15 @@ const AudioWave = ({ smaller = false }) => {
   }, []);
 
   return (
-    <div className={`flex space-x-1 items-center justify-center h-6`}>
+    <div className="flex gap-sm items-center justify-center h-6">
       {[...Array(5)].map((_, i) => (
         <div
           key={i}
           className={`w-1 ${
-            smaller ? "bg-gray-600" : "bg-sky-400"
-          } rounded transition-colors`}
+            smaller
+              ? "bg-text-secondary-light dark:bg-text-secondary-dark"
+              : "bg-primary-light dark:bg-primary-dark"
+          } rounded-sm transition-colors duration-fast`}
           style={{
             height: `${8 + Math.abs(Math.sin(phase / 2 + i)) * 12}px`,
             transition: "height 0.2s",
@@ -29,7 +31,7 @@ const AudioWave = ({ smaller = false }) => {
   );
 };
 
-// Processing pulse animation
+// Processing pulse animation - Locus themed
 const ProcessingPulse = () => {
   const [phase, setPhase] = useState(0);
 
@@ -42,11 +44,11 @@ const ProcessingPulse = () => {
 
   const height = 8 + Math.abs(Math.sin(phase / 2)) * 12;
   return (
-    <div className="flex space-x-1 items-center justify-center h-6">
+    <div className="flex gap-sm items-center justify-center h-6">
       {[...Array(5)].map((_, i) => (
         <div
           key={i}
-          className="w-1 bg-orange-400 rounded"
+          className="w-1 bg-warning-light dark:bg-warning-dark rounded-sm"
           style={{
             height: `${height}px`,
             transition: "height 0.2s",
@@ -214,18 +216,18 @@ const RecordingPill = () => {
   }
 
   return (
-    <div className="fixed left-0 top-0 bg-black/80 backdrop-blur-sm rounded-full px-2 py-1 flex items-center justify-center w-full h-full">
-      <div className="flex items-center gap-3">
+    <div className="fixed left-0 top-0 bg-btn-bg-light/80 dark:bg-btn-bg-dark/80 backdrop-blur-sm rounded-full px-xl py-md flex items-center justify-center w-full h-full transition-all duration-fast">
+      <div className="flex items-center gap-lg">
         <AudioWave />
         {recording && (
-          <div className="text-red-400 flex items-center justify-center">
-            <i className="ri-stop-fill text-sm"></i>
+          <div className="text-error-light dark:text-error-dark flex items-center justify-center transition-colors duration-fast">
+            <i className="ri-stop-fill text-base"></i>
           </div>
         )}
 
         {processing && !recording && (
-          <div className="text-sky-400 flex items-center justify-center animate-spin">
-            <i className="ri-loader-4-line text-sm"></i>
+          <div className="text-primary-light dark:text-primary-dark flex items-center justify-center animate-spin transition-colors duration-fast">
+            <i className="ri-loader-4-line text-base"></i>
           </div>
         )}
       </div>

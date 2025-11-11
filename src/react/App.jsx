@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
+import { ThemeProvider } from './contexts/ThemeContext';
 import Layout from './components/Layout';
 import SplashScreen from './components/SplashScreen';
 import SetupPage from './pages/SetupPage';
@@ -47,24 +48,26 @@ function App() {
   }
 
   return (
-    <div className="App">
-      <Toaster position="top-right" />
-      
-      <Routes>
-        {/* Pill route - separate from main app */}
-        <Route path="/pill" element={<PillPage />} />
-        
-        {/* Main app routes with layout */}
-        <Route path="/" element={<Layout />}>
-          <Route path="setup" element={<SetupPage />} />
-          <Route path="dashboard" element={<DashboardPage />} />
-          <Route path="recordings" element={<RecordingsPage />} />
-          <Route path="models" element={<ModelsPage />} />
-          <Route path="settings" element={<SettingsPage />} />
-          <Route index element={<DashboardPage />} />
-        </Route>
-      </Routes>
-    </div>
+    <ThemeProvider>
+      <div className="App">
+        <Toaster position="top-right" />
+
+        <Routes>
+          {/* Pill route - separate from main app */}
+          <Route path="/pill" element={<PillPage />} />
+
+          {/* Main app routes with layout */}
+          <Route path="/" element={<Layout />}>
+            <Route path="setup" element={<SetupPage />} />
+            <Route path="dashboard" element={<DashboardPage />} />
+            <Route path="recordings" element={<RecordingsPage />} />
+            <Route path="models" element={<ModelsPage />} />
+            <Route path="settings" element={<SettingsPage />} />
+            <Route index element={<DashboardPage />} />
+          </Route>
+        </Routes>
+      </div>
+    </ThemeProvider>
   );
 }
 

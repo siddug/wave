@@ -501,36 +501,38 @@ const ModelsPage = () => {
     : { onDownload: handleDownloadLLMModel, onSelect: handleSelectLLMModel, onDelete: handleDeleteLLMModel };
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-xxxl p-xxxl bg-bg-primary-light dark:bg-bg-primary-dark min-h-screen transition-colors duration-fast">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900 mb-2">Manage Models</h1>
-        <p className="text-gray-600">
-          {activeTab === 'whisper' 
-            ? 'Download, select, or delete Whisper models for transcription.' 
+        <h1 className="text-xxl font-bold text-text-primary-light dark:text-text-primary-dark mb-md transition-colors duration-fast">
+          Manage Models
+        </h1>
+        <p className="text-base text-text-body-light dark:text-text-body-dark transition-colors duration-fast">
+          {activeTab === 'whisper'
+            ? 'Download, select, or delete Whisper models for transcription.'
             : 'Download, select, or delete language models for text generation.'}
         </p>
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8">
+      <div className="border-b border-border-light-light dark:border-border-light-dark transition-colors duration-fast">
+        <nav className="-mb-px flex gap-xxxxl">
           <button
             onClick={() => setActiveTab('whisper')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+            className={`py-md px-xxs border-b-2 font-medium text-sm transition-all duration-fast ${
               activeTab === 'whisper'
-                ? 'border-sky-500 text-sky-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                ? 'border-primary-light dark:border-primary-dark text-primary-light dark:text-primary-dark'
+                : 'border-transparent text-text-secondary-light dark:text-text-secondary-dark hover:text-text-body-light dark:hover:text-text-body-dark hover:border-border-medium-light dark:hover:border-border-medium-dark'
             }`}
           >
             Speech to Text Models
           </button>
           <button
             onClick={() => setActiveTab('llm')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+            className={`py-md px-xxs border-b-2 font-medium text-sm transition-all duration-fast ${
               activeTab === 'llm'
-                ? 'border-sky-500 text-sky-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                ? 'border-primary-light dark:border-primary-dark text-primary-light dark:text-primary-dark'
+                : 'border-transparent text-text-secondary-light dark:text-text-secondary-dark hover:text-text-body-light dark:hover:text-text-body-dark hover:border-border-medium-light dark:hover:border-border-medium-dark'
             }`}
           >
             Language Models
@@ -540,26 +542,28 @@ const ModelsPage = () => {
 
       {/* Test Inference Button (only for LLM tab) */}
       {activeTab === 'llm' && selectedLLMModel && (
-        <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+        <div className="bg-bg-secondary-light dark:bg-bg-secondary-dark rounded-lg p-xl border border-border-light-light dark:border-border-light-dark transition-colors duration-fast">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-medium text-gray-900">Test Inference</h3>
-              <p className="text-sm text-gray-600">
+              <h3 className="text-sm font-medium text-text-primary-light dark:text-text-primary-dark transition-colors duration-fast">
+                Test Inference
+              </h3>
+              <p className="text-sm text-text-body-light dark:text-text-body-dark transition-colors duration-fast">
                 Test the selected LLM model ({selectedLLMModel}) with a sample prompt
               </p>
             </div>
             <button
               onClick={handleTestInference}
               disabled={isTestingInference}
-              className={`px-4 py-2 text-sm font-medium rounded-md border ${
+              className={`px-xl py-md text-sm font-medium rounded-md border min-w-touch min-h-touch flex items-center justify-center transition-all duration-fast ${
                 isTestingInference
-                  ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
-                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-sky-500'
+                  ? 'bg-bg-secondary-light dark:bg-bg-secondary-dark text-text-tertiary-light dark:text-text-tertiary-dark border-border-light-light dark:border-border-light-dark cursor-not-allowed'
+                  : 'bg-bg-surface-light dark:bg-bg-surface-dark text-text-body-light dark:text-text-body-dark border-border-medium-light dark:border-border-medium-dark hover:bg-bg-secondary-light dark:hover:bg-bg-secondary-dark hover:border-border-dark-light dark:hover:border-border-dark-dark'
               }`}
             >
               {isTestingInference ? (
-                <div className="flex items-center">
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24">
+                <div className="flex items-center gap-md">
+                  <svg className="animate-spin h-4 w-4 text-text-tertiary-light dark:text-text-tertiary-dark" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
@@ -574,7 +578,7 @@ const ModelsPage = () => {
       )}
 
       {/* Models List */}
-      <div className="space-y-3">
+      <div className="space-y-lg">
         {currentModels.map((model) => (
           <ModelCard
             key={model.id}

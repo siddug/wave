@@ -5,19 +5,19 @@ const SplashScreen = () => {
     <div className="fixed inset-0 bg-white flex items-center justify-center">
       <div className="text-center">
         {/* Logo */}
-        <div className="w-24 h-24 mx-auto mb-4 bg-gray-50 rounded-2xl flex items-center justify-center animate-fade-in p-2 border border-gray-100">
+        {/* <div className="w-24 h-24 mx-auto mb-4 bg-gray-50 rounded-2xl flex items-center justify-center animate-fade-in p-2 border border-gray-100">
           <img
             src="./assets/logo.png"
             alt="Wave Logo"
             className="w-16 h-16 object-contain"
           />
-        </div>
+        </div> */}
 
-        <h1 className="text-2xl font-light text-gray-900 mb-2 animate-fade-in-delay">
+        <h1 className="text-5xl font-light text-gray-900 mb-2 animate-fade-in-delay">
           Talk with your computer.
         </h1>
 
-        <p className="text-gray-600 text-sm animate-fade-in-delay-2">
+        <p className="text-gray-600 text-lg animate-fade-in-delay-2">
           AI powered voice to text.
         </p>
 

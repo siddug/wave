@@ -6,10 +6,12 @@ import {
   getShortcutToLabel
 } from "../utils/constants";
 import PromptEditModal from "../components/PromptEditModal";
+import { useTheme } from "../contexts/ThemeContext";
 
 
 const SettingsPage = () => {
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+  const { themeMode, setTheme } = useTheme();
 
   const [isRecordingShortcut, setIsRecordingShortcut] = useState(null);
   const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);
@@ -249,194 +251,199 @@ const SettingsPage = () => {
 
 
   return (
-    <div className="p-6">
+    <div className="space-y-xxxl p-xxxl bg-bg-primary-light dark:bg-bg-primary-dark min-h-screen transition-colors duration-fast">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Settings</h1>
-        <p className="text text-gray-600 mt-1">
+        <h1 className="text-xxl font-bold text-text-primary-light dark:text-text-primary-dark transition-colors duration-fast">Settings</h1>
+        <p className="text-base text-text-body-light dark:text-text-body-dark mt-md transition-colors duration-fast">
           Configure your voice transcription preferences
         </p>
       </div>
 
       {/* Permissions */}
-      <h2 className="text-base font-medium text-gray-900 mb-1 mt-4">
-        Permissions
-      </h2>
-      <div className="bg-gray-50 rounded-lg border border-gray-50 bg-gray-50 p-4">
-        <div className="space-y-4">
-          {/* Accessibility */}
-          <div className="flex items-center justify-between p-1 bg-gray-50 rounded-lg">
-            <div className="flex items-center">
-              <div
-                className={`w-3 h-3 rounded-full mr-3 ${
-                  permissions.accessibility ? "bg-green-500" : "bg-red-500"
-                }`}
-              ></div>
-              <div>
-                <h3 className="font-medium text-sm text-gray-900">
-                  Accessibility
-                </h3>
-                <p className="text-xs text-gray-600">
-                  Required for global keyboard shortcuts
-                </p>
+      <div>
+        <h2 className="text-base font-medium text-text-primary-light dark:text-text-primary-dark mb-md transition-colors duration-fast">
+          Permissions
+        </h2>
+        <div className="bg-bg-surface-light dark:bg-bg-surface-dark rounded-lg border border-border-light-light dark:border-border-light-dark p-xl transition-colors duration-fast">
+          <div className="space-y-lg">
+            {/* Accessibility */}
+            <div className="flex items-center justify-between p-sm transition-colors duration-fast">
+              <div className="flex items-center">
+                <div
+                  className={`w-3 h-3 rounded-full mr-lg transition-colors duration-fast ${
+                    permissions.accessibility ? "bg-success-light dark:bg-success-dark" : "bg-error-light dark:bg-error-dark"
+                  }`}
+                ></div>
+                <div>
+                  <h3 className="font-medium text-sm text-text-primary-light dark:text-text-primary-dark transition-colors duration-fast">
+                    Accessibility
+                  </h3>
+                  <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark transition-colors duration-fast">
+                    Required for global keyboard shortcuts
+                  </p>
+                </div>
               </div>
+              <Button
+                variant={permissions.accessibility ? "success" : "primary"}
+                size="sm"
+                state={permissions.accessibility ? "success" : "default"}
+                onClick={requestAccessibilityPermission}
+              >
+                {permissions.accessibility ? "Granted" : "Grant Permission"}
+              </Button>
             </div>
-            <Button
-              variant={permissions.accessibility ? "success" : "primary"}
-              size="sm"
-              state={permissions.accessibility ? "success" : "default"}
-              onClick={requestAccessibilityPermission}
-            >
-              {permissions.accessibility ? "Granted" : "Grant Permission"}
-            </Button>
-          </div>
 
-          {/* Microphone */}
-          <div className="flex items-center justify-between p-1 bg-gray-50 rounded-lg">
-            <div className="flex items-center">
-              <div
-                className={`w-3 h-3 rounded-full mr-3 ${
-                  permissions.microphone ? "bg-green-500" : "bg-red-500"
-                }`}
-              ></div>
-              <div>
-                <h3 className="font-medium text-sm text-gray-900">
-                  Microphone
-                </h3>
-                <p className="text-xs text-gray-600">
-                  Required for voice recording
-                </p>
+            {/* Microphone */}
+            <div className="flex items-center justify-between p-sm transition-colors duration-fast">
+              <div className="flex items-center">
+                <div
+                  className={`w-3 h-3 rounded-full mr-lg transition-colors duration-fast ${
+                    permissions.microphone ? "bg-success-light dark:bg-success-dark" : "bg-error-light dark:bg-error-dark"
+                  }`}
+                ></div>
+                <div>
+                  <h3 className="font-medium text-sm text-text-primary-light dark:text-text-primary-dark transition-colors duration-fast">
+                    Microphone
+                  </h3>
+                  <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark transition-colors duration-fast">
+                    Required for voice recording
+                  </p>
+                </div>
               </div>
+              <Button
+                variant={permissions.microphone ? "success" : "primary"}
+                size="sm"
+                state={permissions.microphone ? "success" : "default"}
+                onClick={requestMicrophonePermission}
+              >
+                {permissions.microphone ? "Granted" : "Grant Permission"}
+              </Button>
             </div>
-            <Button
-              variant={permissions.microphone ? "success" : "primary"}
-              size="sm"
-              state={permissions.microphone ? "success" : "default"}
-              onClick={requestMicrophonePermission}
-            >
-              {permissions.microphone ? "Granted" : "Grant Permission"}
-            </Button>
           </div>
         </div>
       </div>
 
-      <h2 className="text-base font-medium text-gray-900 mb-1 mt-4">
-        Keyboard Shortcuts
-      </h2>
-      <div className="bg-gray-50 rounded-lg border border-gray-50 bg-gray-50 p-4">
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <label className="font-medium text-sm text-gray-900">
-                Hold to Record
-              </label>
-              <p className="text-xs text-gray-600">
-                Press and hold to start recording, release to stop
-              </p>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="flex items-center space-x-2 px-3 py-2">
-                <span className="text-sm">
-                  {getShortcutToLabel(settings.holdShortcut.start)}
-                </span>
+      <div>
+        <h2 className="text-base font-medium text-text-primary-light dark:text-text-primary-dark mb-md transition-colors duration-fast">
+          Keyboard Shortcuts
+        </h2>
+        <div className="bg-bg-surface-light dark:bg-bg-surface-dark rounded-lg border border-border-light-light dark:border-border-light-dark p-xl transition-colors duration-fast">
+          <div className="space-y-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="font-medium text-sm text-text-primary-light dark:text-text-primary-dark transition-colors duration-fast">
+                  Hold to Record
+                </label>
+                <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark transition-colors duration-fast">
+                  Press and hold to start recording, release to stop
+                </p>
               </div>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => startShortcutRecording("holdShortcut")}
-                disabled={isRecordingShortcut === "holdShortcut"}
-              >
-                {isRecordingShortcut === "holdShortcut"
-                  ? "Press any key..."
-                  : "Change"}
+              <div className="flex items-center gap-md">
+                <div className="flex items-center gap-md px-lg py-md">
+                  <span className="text-sm text-text-body-light dark:text-text-body-dark transition-colors duration-fast">
+                    {getShortcutToLabel(settings.holdShortcut.start)}
+                  </span>
+                </div>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => startShortcutRecording("holdShortcut")}
+                  disabled={isRecordingShortcut === "holdShortcut"}
+                >
+                  {isRecordingShortcut === "holdShortcut"
+                    ? "Press any key..."
+                    : "Change"}
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="font-medium text-sm text-text-primary-light dark:text-text-primary-dark transition-colors duration-fast">
+                  Toggle Recording
+                </label>
+                <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark transition-colors duration-fast">
+                  Press once to start, press again to stop
+                </p>
+              </div>
+              <div className="flex items-center gap-md">
+                <div className="flex items-center gap-md px-lg py-md">
+                  <span className="text-sm text-text-body-light dark:text-text-body-dark transition-colors duration-fast">
+                    {getShortcutToLabel(settings.toggleShortcut.start)}
+                  </span>
+                </div>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => startShortcutRecording("toggleShortcut")}
+                  disabled={isRecordingShortcut === "toggleShortcut"}
+                >
+                  {isRecordingShortcut === "toggleShortcut"
+                    ? "Press any key..."
+                    : "Change"}
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-md">
+              <Button variant="ghost" size="sm" onClick={resetShortcuts}>
+                Reset Shortcuts
               </Button>
             </div>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div>
-              <label className="font-medium text-sm text-gray-900">
-                Toggle Recording
-              </label>
-              <p className="text-xs text-gray-600">
-                Press once to start, press again to stop
-              </p>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="flex items-center space-x-2 px-3 py-2">
-                <span className="text-sm">
-                  {getShortcutToLabel(settings.toggleShortcut.start)}
-                </span>
-              </div>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => startShortcutRecording("toggleShortcut")}
-                disabled={isRecordingShortcut === "toggleShortcut"}
-              >
-                {isRecordingShortcut === "toggleShortcut"
-                  ? "Press any key..."
-                  : "Change"}
-              </Button>
-            </div>
-          </div>
-
-          <div className="flex justify-end pt-2">
-            <Button variant="ghost" size="sm" onClick={resetShortcuts}>
-              Reset Shortcuts
-            </Button>
           </div>
         </div>
       </div>
 
-      <h2 className="text-base font-medium text-gray-900 mt-4 mb-1">General</h2>
-      <div className="bg-gray-50 rounded-lg border border-gray-50 bg-gray-50 p-4">
-        <div className="space-y-6">
-          {/* Language */}
-          <div className="flex items-center justify-between">
-            <div>
-              <label className="font-medium text-sm text-gray-900">
-                Default Language
-              </label>
-              <p className="text-xs text-gray-600">
-                Primary language for voice recognition
-              </p>
+      <div>
+        <h2 className="text-base font-medium text-text-primary-light dark:text-text-primary-dark mb-md transition-colors duration-fast">General</h2>
+        <div className="bg-bg-surface-light dark:bg-bg-surface-dark rounded-lg border border-border-light-light dark:border-border-light-dark p-xl transition-colors duration-fast">
+          <div className="space-y-xxxl">
+            {/* Language */}
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="font-medium text-sm text-text-primary-light dark:text-text-primary-dark transition-colors duration-fast">
+                  Default Language
+                </label>
+                <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark transition-colors duration-fast">
+                  Primary language for voice recognition
+                </p>
+              </div>
+              <select
+                value={settings.language}
+                onChange={(e) => handleInputChange("language", e.target.value)}
+                className="px-lg py-md border text-text-primary-light dark:text-text-primary-dark bg-bg-primary-light dark:bg-bg-primary-dark border-border-medium-light dark:border-border-medium-dark rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-primary-dark transition-colors duration-fast"
+              >
+                <option value="en">English</option>
+                <option value="es">Spanish</option>
+                <option value="fr">French</option>
+                <option value="de">German</option>
+                <option value="it">Italian</option>
+              </select>
             </div>
-            <select
-              value={settings.language}
-              onChange={(e) => handleInputChange("language", e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="en">English</option>
-              <option value="es">Spanish</option>
-              <option value="fr">French</option>
-              <option value="de">German</option>
-              <option value="it">Italian</option>
-            </select>
-          </div>
 
-          {/* Auto Start */}
-          <div className="flex items-center justify-between">
-            <div>
-              <label className="font-medium text-sm text-gray-900">
-                Start at Login
+            {/* Auto Start */}
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="font-medium text-sm text-text-primary-light dark:text-text-primary-dark transition-colors duration-fast">
+                  Start at Login
+                </label>
+                <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark transition-colors duration-fast">
+                  Automatically start Wave when you log in
+                </p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={settings.autoStart}
+                  onChange={(e) =>
+                    handleInputChange("autoStart", e.target.checked)
+                  }
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-border-medium-light dark:bg-border-medium-dark rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border-light-light dark:after:border-border-light-dark after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-light dark:peer-checked:bg-primary-dark transition-colors duration-fast"></div>
               </label>
-              <p className="text-xs text-gray-600">
-                Automatically start Wave when you log in
-              </p>
             </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={settings.autoStart}
-                onChange={(e) =>
-                  handleInputChange("autoStart", e.target.checked)
-                }
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-sky-600"></div>
-            </label>
-          </div>
 
           {/* Copy to Clipboard */}
           {/* <div className="flex items-center justify-between">
@@ -462,226 +469,264 @@ const SettingsPage = () => {
           </div> */}
 
           {/* Auto Paste to Cursor */}
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="font-medium text-sm text-text-primary-light dark:text-text-primary-dark transition-colors duration-fast">
+                  Auto paste to cursor
+                </label>
+                <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark transition-colors duration-fast">
+                  Automatically paste transcriptions where cursor is located
+                </p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={settings.autoPasteToCursor}
+                  onChange={(e) =>
+                    handleInputChange("autoPasteToCursor", e.target.checked)
+                  }
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-border-medium-light dark:bg-border-medium-dark rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border-light-light dark:after:border-border-light-dark after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-light dark:peer-checked:bg-primary-dark transition-colors duration-fast"></div>
+              </label>
+            </div>
+
+            {/* Enhanced Prompts */}
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <label className="font-medium text-sm text-text-primary-light dark:text-text-primary-dark transition-colors duration-fast">
+                  Enhanced transcription
+                </label>
+                <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark transition-colors duration-fast">
+                  Use LLM to clean up and format transcriptions with better grammar and punctuation
+                </p>
+                {settings.enhancedPrompts !== false && (
+                  <button
+                    onClick={() => setIsPromptModalOpen(true)}
+                    className="text-xs text-primary-light dark:text-primary-dark hover:text-primary-light/80 dark:hover:text-primary-dark/80 mt-xs font-medium underline transition-colors duration-fast"
+                  >
+                    Edit prompt
+                  </button>
+                )}
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={settings.enhancedPrompts !== false} // Default to true
+                  onChange={(e) =>
+                    handleInputChange("enhancedPrompts", e.target.checked)
+                  }
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-border-medium-light dark:bg-border-medium-dark rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border-light-light dark:after:border-border-light-dark after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-light dark:peer-checked:bg-primary-dark transition-colors duration-fast"></div>
+              </label>
+            </div>
+
+            {/* Play Audio */}
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="font-medium text-sm text-text-primary-light dark:text-text-primary-dark transition-colors duration-fast">
+                  Play audio feedback
+                </label>
+                <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark transition-colors duration-fast">
+                  Play sound effects when recording starts/stops
+                </p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={settings.playAudio}
+                  onChange={(e) =>
+                    handleInputChange("playAudio", e.target.checked)
+                  }
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-border-medium-light dark:bg-border-medium-dark rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border-light-light dark:after:border-border-light-dark after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-light dark:peer-checked:bg-primary-dark transition-colors duration-fast"></div>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Theme */}
+      <div>
+        <h2 className="text-base font-medium text-text-primary-light dark:text-text-primary-dark mb-md transition-colors duration-fast">Theme</h2>
+        <div className="bg-bg-surface-light dark:bg-bg-surface-dark rounded-lg border border-border-light-light dark:border-border-light-dark p-xl transition-colors duration-fast">
           <div className="flex items-center justify-between">
             <div>
-              <label className="font-medium text-sm text-gray-900">
-                Auto paste to cursor
+              <label className="font-medium text-sm text-text-primary-light dark:text-text-primary-dark transition-colors duration-fast">
+                Appearance
               </label>
-              <p className="text-xs text-gray-600">
-                Automatically paste transcriptions where cursor is located
+              <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark transition-colors duration-fast">
+                Choose how Wave looks. System will match your OS settings.
               </p>
             </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={settings.autoPasteToCursor}
-                onChange={(e) =>
-                  handleInputChange("autoPasteToCursor", e.target.checked)
-                }
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-sky-600"></div>
-            </label>
-          </div>
-
-          {/* Enhanced Prompts */}
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <label className="font-medium text-sm text-gray-900">
-                Enhanced transcription
-              </label>
-              <p className="text-xs text-gray-600">
-                Use LLM to clean up and format transcriptions with better grammar and punctuation
-              </p>
-              {settings.enhancedPrompts !== false && (
-                <button
-                  onClick={() => setIsPromptModalOpen(true)}
-                  className="text-xs text-sky-600 hover:text-sky-700 mt-1 font-medium underline"
-                >
-                  Edit prompt
-                </button>
-              )}
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={settings.enhancedPrompts !== false} // Default to true
-                onChange={(e) =>
-                  handleInputChange("enhancedPrompts", e.target.checked)
-                }
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-sky-600"></div>
-            </label>
-          </div>
-
-          {/* Play Audio */}
-          <div className="flex items-center justify-between">
-            <div>
-              <label className="font-medium text-sm text-gray-900">
-                Play audio feedback
-              </label>
-              <p className="text-xs text-gray-600">
-                Play sound effects when recording starts/stops
-              </p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={settings.playAudio}
-                onChange={(e) =>
-                  handleInputChange("playAudio", e.target.checked)
-                }
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-sky-600"></div>
-            </label>
+            <select
+              value={themeMode}
+              onChange={(e) => {
+                setTheme(e.target.value);
+                toast.success(`Theme set to ${e.target.value}`);
+              }}
+              className="px-lg py-md border text-text-primary-light dark:text-text-primary-dark bg-bg-primary-light dark:bg-bg-primary-dark border-border-medium-light dark:border-border-medium-dark rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-primary-dark transition-colors duration-fast"
+            >
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+              <option value="system">System</option>
+            </select>
           </div>
         </div>
       </div>
 
       {/* Data Management */}
-      <h2 className="text-base font-medium text-gray-900 mt-4 mb-1">
-        Data Management
-      </h2>
-      <div className="bg-gray-50 rounded-lg border border-gray-50 bg-gray-50 p-4">
-        <div className="space-y-6">
-          {/* Storage History */}
-          <div className="flex items-center justify-between">
-            <div>
-              <label className="font-medium text-sm text-gray-900">
-                Storage History
-              </label>
-              <p className="text-xs text-gray-600">
-                How long to keep recordings and transcriptions
-              </p>
+      <div>
+        <h2 className="text-base font-medium text-text-primary-light dark:text-text-primary-dark mb-md transition-colors duration-fast">
+          Data Management
+        </h2>
+        <div className="bg-bg-surface-light dark:bg-bg-surface-dark rounded-lg border border-border-light-light dark:border-border-light-dark p-xl transition-colors duration-fast">
+          <div className="space-y-xxxl">
+            {/* Storage History */}
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="font-medium text-sm text-text-primary-light dark:text-text-primary-dark transition-colors duration-fast">
+                  Storage History
+                </label>
+                <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark transition-colors duration-fast">
+                  How long to keep recordings and transcriptions
+                </p>
+              </div>
+              <select
+                value={settings.storageHistory}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  const newSettings = {
+                    ...settings,
+                    storageHistory: value,
+                    autoCleanup: value !== "forever",
+                  };
+                  saveSettings(newSettings);
+                }}
+                className="px-lg py-md text-text-primary-light dark:text-text-primary-dark bg-bg-primary-light dark:bg-bg-primary-dark border border-border-medium-light dark:border-border-medium-dark rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-primary-dark transition-colors duration-fast"
+              >
+                {storageOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </div>
-            <select
-              value={settings.storageHistory}
-              onChange={(e) => {
-                const value = e.target.value;
-                const newSettings = {
-                  ...settings,
-                  storageHistory: value,
-                  autoCleanup: value !== "forever",
-                };
-                saveSettings(newSettings);
-              }}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {storageOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
 
-          {/* Auto Cleanup */}
-          <div className="flex items-center justify-between">
-            <div>
-              <label className="font-medium text-sm text-gray-900">
-                Auto Cleanup
+            {/* Auto Cleanup */}
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="font-medium text-sm text-text-primary-light dark:text-text-primary-dark transition-colors duration-fast">
+                  Auto Cleanup
+                </label>
+                <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark transition-colors duration-fast">
+                  {settings.storageHistory === "forever"
+                    ? "Disabled when storage is set to forever"
+                    : "Automatically delete old recordings based on storage history setting"}
+                </p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={settings.autoCleanup}
+                  onChange={(e) =>
+                    handleInputChange("autoCleanup", e.target.checked)
+                  }
+                  disabled={settings.storageHistory === "forever"}
+                  className="sr-only peer"
+                />
+                <div
+                  className={`w-11 h-6 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border-light-light dark:after:border-border-light-dark after:border after:rounded-full after:h-5 after:w-5 after:transition-all transition-colors duration-fast ${
+                    settings.storageHistory === "forever"
+                      ? "bg-border-light-light dark:bg-border-light-dark cursor-not-allowed"
+                      : "bg-border-medium-light dark:bg-border-medium-dark peer-checked:bg-primary-light dark:peer-checked:bg-primary-dark"
+                  }`}
+                ></div>
               </label>
-              <p className="text-xs text-gray-600">
-                {settings.storageHistory === "forever"
-                  ? "Disabled when storage is set to forever"
-                  : "Automatically delete old recordings based on storage history setting"}
-              </p>
             </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={settings.autoCleanup}
-                onChange={(e) =>
-                  handleInputChange("autoCleanup", e.target.checked)
-                }
-                disabled={settings.storageHistory === "forever"}
-                className="sr-only peer"
-              />
-              <div
-                className={`w-11 h-6 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all ${
-                  settings.storageHistory === "forever"
-                    ? "bg-gray-300 cursor-not-allowed"
-                    : "bg-gray-200 peer-checked:bg-sky-600"
-                }`}
-              ></div>
-            </label>
           </div>
         </div>
       </div>
 
       {/* Actions */}
-      <h2 className="text-base font-medium text-gray-900 mt-4 mb-1">Actions</h2>
-      <div className="bg-gray-50 rounded-lg border border-gray-50 bg-gray-50 p-4">
-        <div className="flex space-x-4">
-          <Button variant="secondary" onClick={resetToDefaults}>
-            Reset to Defaults
-          </Button>
+      <div>
+        <h2 className="text-base font-medium text-text-primary-light dark:text-text-primary-dark mb-md transition-colors duration-fast">Actions</h2>
+        <div className="bg-bg-surface-light dark:bg-bg-surface-dark rounded-lg border border-border-light-light dark:border-border-light-dark p-xl transition-colors duration-fast">
+          <div className="flex gap-lg">
+            <Button variant="secondary" onClick={resetToDefaults}>
+              Reset to Defaults
+            </Button>
 
-          <Button
-            variant="secondary"
-            onClick={() => window.electronAPI?.navigation?.navigateTo("/setup")}
-          >
-            Run Setup Again
-          </Button>
+            <Button
+              variant="secondary"
+              onClick={() => window.electronAPI?.navigation?.navigateTo("/setup")}
+            >
+              Run Setup Again
+            </Button>
+          </div>
         </div>
       </div>
 
       {/* App Info */}
-      <h2 className="text-base font-medium text-gray-900 mt-4 mb-1">
-        About Wave
-      </h2>
-      <div className="bg-gray-50 rounded-lg p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-          <div>
-            <span className="text-gray-600">Version:</span>
-            <p className="font-medium text-gray-900">1.0.0</p>
-          </div>
-          <div>
-            <span className="text-gray-600">Platform:</span>
-            <p className="font-medium text-gray-900">macOS</p>
-          </div>
-          <div>
-            <span className="text-gray-600">Maintained by:</span>
-            <p className="font-medium text-gray-900">www.siddg.com</p>
-          </div>
-          <div>
-            <span className="text-gray-600">AI Engine:</span>
-            <p className="font-medium text-gray-900">OpenAI Whisper</p>
+      <div>
+        <h2 className="text-base font-medium text-text-primary-light dark:text-text-primary-dark mb-md transition-colors duration-fast">
+          About Wave
+        </h2>
+        <div className="bg-bg-surface-light dark:bg-bg-surface-dark rounded-lg border border-border-light-light dark:border-border-light-dark p-xxxl transition-colors duration-fast">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-lg text-xs">
+            <div>
+              <span className="text-text-secondary-light dark:text-text-secondary-dark transition-colors duration-fast">Version:</span>
+              <p className="font-medium text-text-primary-light dark:text-text-primary-dark transition-colors duration-fast">1.0.0</p>
+            </div>
+            <div>
+              <span className="text-text-secondary-light dark:text-text-secondary-dark transition-colors duration-fast">Platform:</span>
+              <p className="font-medium text-text-primary-light dark:text-text-primary-dark transition-colors duration-fast">macOS</p>
+            </div>
+            <div>
+              <span className="text-text-secondary-light dark:text-text-secondary-dark transition-colors duration-fast">Maintained by:</span>
+              <p className="font-medium text-text-primary-light dark:text-text-primary-dark transition-colors duration-fast">www.siddg.com</p>
+            </div>
+            <div>
+              <span className="text-text-secondary-light dark:text-text-secondary-dark transition-colors duration-fast">AI Engine:</span>
+              <p className="font-medium text-text-primary-light dark:text-text-primary-dark transition-colors duration-fast">OpenAI Whisper</p>
+            </div>
           </div>
         </div>
       </div>
-      
+
       {/* Logs */}
-      <h2 className="text-base font-medium text-gray-900 mt-4 mb-1">Logs</h2>
-      <div className="bg-gray-50 rounded-lg border border-gray-50 bg-gray-50 p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="font-medium text-sm text-gray-900">Debug Logs</p>
-            <p className="text-xs text-gray-600 mt-1">
-              Access debug logs for troubleshooting. Share these logs when reporting issues.
-            </p>
-          </div>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={async () => {
-              try {
-                const result = await window.electronAPI?.app?.openLogsFolder();
-                if (result?.success) {
-                  toast.success("Logs folder opened");
-                } else {
+      <div>
+        <h2 className="text-base font-medium text-text-primary-light dark:text-text-primary-dark mb-md transition-colors duration-fast">Logs</h2>
+        <div className="bg-bg-surface-light dark:bg-bg-surface-dark rounded-lg border border-border-light-light dark:border-border-light-dark p-xl transition-colors duration-fast">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium text-sm text-text-primary-light dark:text-text-primary-dark transition-colors duration-fast">Debug Logs</p>
+              <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark mt-xs transition-colors duration-fast">
+                Access debug logs for troubleshooting. Share these logs when reporting issues.
+              </p>
+            </div>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={async () => {
+                try {
+                  const result = await window.electronAPI?.app?.openLogsFolder();
+                  if (result?.success) {
+                    toast.success("Logs folder opened");
+                  } else {
+                    toast.error("Failed to open logs folder");
+                  }
+                } catch (error) {
+                  console.error("Error opening logs folder:", error);
                   toast.error("Failed to open logs folder");
                 }
-              } catch (error) {
-                console.error("Error opening logs folder:", error);
-                toast.error("Failed to open logs folder");
-              }
-            }}
-          >
-            Open Logs Folder
-          </Button>
+              }}
+            >
+              Open Logs Folder
+            </Button>
+          </div>
         </div>
       </div>
       

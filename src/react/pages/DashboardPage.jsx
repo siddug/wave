@@ -266,7 +266,7 @@ const DashboardPage = () => {
   const LineChart = ({ data, height = 200 }) => {
     if (!data || data.length === 0) {
       return (
-        <div className="flex items-center justify-center h-48 text-gray-500">
+        <div className="flex items-center justify-center h-48 text-text-secondary-light dark:text-text-secondary-dark transition-colors duration-fast">
           No data to display
         </div>
       );
@@ -274,9 +274,9 @@ const DashboardPage = () => {
 
     const maxRecordings = Math.max(...data.map(d => d.recordings), 1); // Ensure at least 1 for scaling
     const padding = 40;
-    
+
     return (
-      <div className="w-full bg-white rounded-lg p-4">
+      <div className="w-full bg-bg-primary-light dark:bg-bg-primary-dark rounded-lg p-xl transition-colors duration-fast">
         <svg viewBox={`0 0 800 ${height}`} className="w-full h-auto overflow-visible">
           {(() => {
             const width = 800; // Fixed viewBox width for consistent scaling
@@ -301,7 +301,7 @@ const DashboardPage = () => {
                       y1={y}
                       x2={width - padding}
                       y2={y}
-                      stroke="#f3f4f6"
+                      className="stroke-border-light-light dark:stroke-border-light-dark"
                       strokeWidth={1}
                     />
                   );
@@ -317,7 +317,7 @@ const DashboardPage = () => {
                       x={padding - 10}
                       y={y + 4}
                       textAnchor="end"
-                      className="fill-gray-500 text-xs"
+                      className="fill-text-secondary-light dark:fill-text-secondary-dark text-xs transition-colors duration-fast"
                     >
                       {value}
                     </text>
@@ -328,9 +328,8 @@ const DashboardPage = () => {
                 <polyline
                   points={points}
                   fill="none"
-                  stroke="#3b82f6"
+                  className="stroke-primary-light dark:stroke-primary-dark drop-shadow-sm transition-colors duration-fast"
                   strokeWidth={2}
-                  className="drop-shadow-sm"
                 />
 
                 {/* Dots */}
@@ -343,8 +342,7 @@ const DashboardPage = () => {
                       cx={x}
                       cy={y}
                       r={3}
-                      fill="#3b82f6"
-                      className="hover:r-4 cursor-pointer"
+                      className="fill-primary-light dark:fill-primary-dark hover:r-4 cursor-pointer transition-colors duration-fast"
                     >
                       <title>{`${d.date.toLocaleDateString()}: ${d.recordings} recordings`}</title>
                     </circle>
@@ -361,7 +359,7 @@ const DashboardPage = () => {
                         x={x}
                         y={height - 10}
                         textAnchor="middle"
-                        className="fill-gray-500 text-xs"
+                        className="fill-text-secondary-light dark:fill-text-secondary-dark text-xs transition-colors duration-fast"
                       >
                         {d.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                       </text>
@@ -378,33 +376,35 @@ const DashboardPage = () => {
   };
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-xxxl p-xxxl bg-bg-primary-light dark:bg-bg-primary-dark min-h-screen transition-colors duration-fast">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Dashboard</h1>
-        <p className="text-sm text-gray-600">
+        <h1 className="text-xxl font-bold text-text-primary-light dark:text-text-primary-dark mb-md transition-colors duration-fast">
+          Dashboard
+        </h1>
+        <p className="text-sm text-text-body-light dark:text-text-body-dark transition-colors duration-fast">
           Voice transcription at your fingertips
         </p>
       </div>
 
       {/* Recording Status Card */}
-      <div className="bg-gray-50 rounded-lg border border-gray-50 p-4">
-        <h2 className="text-lg font-medium text-gray-900 mb-4">
+      <div className="bg-bg-surface-light dark:bg-bg-surface-dark rounded-lg border border-border-light-light dark:border-border-light-dark p-xl transition-colors duration-fast">
+        <h2 className="text-lg font-medium text-text-primary-light dark:text-text-primary-dark mb-xl transition-colors duration-fast">
           Recording Status
         </h2>
 
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center gap-lg">
             <div
-              className={`w-3 h-3 rounded-full ${
+              className={`w-3 h-3 rounded-full transition-colors duration-fast ${
                 isRecording
-                  ? "bg-red-500 animate-pulse"
+                  ? "bg-error-light dark:bg-error-dark animate-pulse"
                   : isTranscribing
-                  ? "bg-sky-500 animate-ping"
-                  : "bg-green-500"
+                  ? "bg-primary-light dark:bg-primary-dark animate-ping"
+                  : "bg-success-light dark:bg-success-dark"
               }`}
             ></div>
-            <span className="text-sm text-gray-700">
+            <span className="text-sm text-text-body-light dark:text-text-body-dark transition-colors duration-fast">
               {isRecording
                 ? "Recording active..."
                 : isTranscribing
@@ -425,9 +425,11 @@ const DashboardPage = () => {
 
         {/* Permission buttons when missing */}
         {(!permissions.accessibility || !permissions.microphone) && (
-          <div className="mt-4 pt-4 border-t border-gray-200">
-            <p className="text-sm text-gray-600 mb-3">Permissions needed to start recording:</p>
-            <div className="flex flex-wrap gap-2">
+          <div className="mt-xl pt-xl border-t border-border-light-light dark:border-border-light-dark transition-colors duration-fast">
+            <p className="text-sm text-text-body-light dark:text-text-body-dark mb-lg transition-colors duration-fast">
+              Permissions needed to start recording:
+            </p>
+            <div className="flex flex-wrap gap-md">
               {!permissions.accessibility && (
                 <Button
                   variant="secondary"
@@ -452,33 +454,37 @@ const DashboardPage = () => {
       </div>
 
       {/* Shortcuts Info */}
-      <div className="bg-sky-50 rounded-lg border border-sky-200 p-6">
-        <h2 className="text-lg font-medium text-sky-900 mb-4">
+      <div className="bg-primary-light/10 dark:bg-primary-dark/10 rounded-lg border border-primary-light/20 dark:border-primary-dark/20 p-xxxl transition-colors duration-fast">
+        <h2 className="text-lg font-medium text-primary-light dark:text-primary-dark mb-xl transition-colors duration-fast">
           Keyboard Shortcuts
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-xl text-sm">
           <div>
-            <div className="flex items-center space-x-2 mb-2">
-              <kbd className="px-2 py-1 bg-white border border-sky-300 rounded text-xs font-mono">
+            <div className="flex items-center gap-md mb-md">
+              <kbd className="px-md py-sm bg-bg-surface-light dark:bg-bg-surface-dark text-text-primary-light dark:text-text-primary-dark border border-border-medium-light dark:border-border-medium-dark rounded text-xs font-mono transition-colors duration-fast">
                 Globe/Fn
               </kbd>
-              <span className="text-sky-800">Hold to record</span>
+              <span className="text-text-primary-light dark:text-text-primary-dark transition-colors duration-fast">
+                Hold to record
+              </span>
             </div>
-            <p className="text-sky-600 text-xs">
+            <p className="text-text-secondary-light dark:text-text-secondary-dark text-xs transition-colors duration-fast">
               Press and hold, release to stop
             </p>
           </div>
           <div>
-            <div className="flex items-center space-x-2 mb-2">
-              <kbd className="px-2 py-1 bg-white border border-sky-300 rounded text-xs font-mono">
+            <div className="flex items-center gap-md mb-md">
+              <kbd className="px-md py-sm bg-bg-surface-light dark:bg-bg-surface-dark text-text-primary-light dark:text-text-primary-dark border border-border-medium-light dark:border-border-medium-dark rounded text-xs font-mono transition-colors duration-fast">
                 Ctrl
               </kbd>
-              <kbd className="px-2 py-1 bg-white border border-sky-300 rounded text-xs font-mono">
+              <kbd className="px-md py-sm bg-bg-surface-light dark:bg-bg-surface-dark text-text-primary-light dark:text-text-primary-dark border border-border-medium-light dark:border-border-medium-dark rounded text-xs font-mono transition-colors duration-fast">
                 Space
               </kbd>
-              <span className="text-sky-800">Toggle recording</span>
+              <span className="text-text-primary-light dark:text-text-primary-dark transition-colors duration-fast">
+                Toggle recording
+              </span>
             </div>
-            <p className="text-sky-600 text-xs">
+            <p className="text-text-secondary-light dark:text-text-secondary-dark text-xs transition-colors duration-fast">
               Press once to start, again to stop
             </p>
           </div>
@@ -486,13 +492,13 @@ const DashboardPage = () => {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-xl">
         <Link to="/recordings">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow cursor-pointer">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-sky-100 rounded-lg flex items-center justify-center">
+          <div className="bg-bg-surface-light dark:bg-bg-surface-dark rounded-lg shadow-sm border border-border-light-light dark:border-border-light-dark p-xl hover:shadow-md hover:border-border-medium-light dark:hover:border-border-medium-dark transition-all duration-fast cursor-pointer">
+            <div className="flex items-center gap-lg">
+              <div className="w-10 h-10 bg-primary-light/10 dark:bg-primary-dark/10 rounded-lg flex items-center justify-center transition-colors duration-fast">
                 <svg
-                  className="w-5 h-5 text-sky-600"
+                  className="w-5 h-5 text-primary-light dark:text-primary-dark transition-colors duration-fast"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -506,19 +512,23 @@ const DashboardPage = () => {
                 </svg>
               </div>
               <div>
-                <h3 className="font-medium text-gray-900">Recordings</h3>
-                <p className="text-sm text-gray-500">View all recordings</p>
+                <h3 className="font-medium text-text-primary-light dark:text-text-primary-dark transition-colors duration-fast">
+                  Recordings
+                </h3>
+                <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark transition-colors duration-fast">
+                  View all recordings
+                </p>
               </div>
             </div>
           </div>
         </Link>
 
         <Link to="/models">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow cursor-pointer">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+          <div className="bg-bg-surface-light dark:bg-bg-surface-dark rounded-lg shadow-sm border border-border-light-light dark:border-border-light-dark p-xl hover:shadow-md hover:border-border-medium-light dark:hover:border-border-medium-dark transition-all duration-fast cursor-pointer">
+            <div className="flex items-center gap-lg">
+              <div className="w-10 h-10 bg-success-light/10 dark:bg-success-dark/10 rounded-lg flex items-center justify-center transition-colors duration-fast">
                 <svg
-                  className="w-5 h-5 text-green-600"
+                  className="w-5 h-5 text-success-light dark:text-success-dark transition-colors duration-fast"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -532,19 +542,23 @@ const DashboardPage = () => {
                 </svg>
               </div>
               <div>
-                <h3 className="font-medium text-gray-900">Models</h3>
-                <p className="text-sm text-gray-500">Manage AI models</p>
+                <h3 className="font-medium text-text-primary-light dark:text-text-primary-dark transition-colors duration-fast">
+                  Models
+                </h3>
+                <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark transition-colors duration-fast">
+                  Manage AI models
+                </p>
               </div>
             </div>
           </div>
         </Link>
 
         <Link to="/settings">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow cursor-pointer">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+          <div className="bg-bg-surface-light dark:bg-bg-surface-dark rounded-lg shadow-sm border border-border-light-light dark:border-border-light-dark p-xl hover:shadow-md hover:border-border-medium-light dark:hover:border-border-medium-dark transition-all duration-fast cursor-pointer">
+            <div className="flex items-center gap-lg">
+              <div className="w-10 h-10 bg-text-secondary-light/10 dark:bg-text-secondary-dark/10 rounded-lg flex items-center justify-center transition-colors duration-fast">
                 <svg
-                  className="w-5 h-5 text-gray-600"
+                  className="w-5 h-5 text-text-secondary-light dark:text-text-secondary-dark transition-colors duration-fast"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -564,8 +578,12 @@ const DashboardPage = () => {
                 </svg>
               </div>
               <div>
-                <h3 className="font-medium text-gray-900">Settings</h3>
-                <p className="text-sm text-gray-500">Configure shortcuts</p>
+                <h3 className="font-medium text-text-primary-light dark:text-text-primary-dark transition-colors duration-fast">
+                  Settings
+                </h3>
+                <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark transition-colors duration-fast">
+                  Configure shortcuts
+                </p>
               </div>
             </div>
           </div>
@@ -573,18 +591,20 @@ const DashboardPage = () => {
       </div>
 
       {/* Stats Set 1 */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-xl">
+        <div className="bg-bg-surface-light dark:bg-bg-surface-dark rounded-lg shadow-sm border border-border-light-light dark:border-border-light-dark p-xl transition-colors duration-fast">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-xxl font-bold text-text-primary-light dark:text-text-primary-dark transition-colors duration-fast">
                 {stats.totalTimeSpokenWeek}m
               </p>
-              <p className="text-sm text-gray-500">Time spoken this week</p>
+              <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark transition-colors duration-fast">
+                Time spoken this week
+              </p>
             </div>
-            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-info-light/10 dark:bg-info-dark/10 rounded-lg flex items-center justify-center transition-colors duration-fast">
               <svg
-                className="w-5 h-5 text-blue-600"
+                className="w-5 h-5 text-info-light dark:text-info-dark transition-colors duration-fast"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -600,17 +620,19 @@ const DashboardPage = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div className="bg-bg-surface-light dark:bg-bg-surface-dark rounded-lg shadow-sm border border-border-light-light dark:border-border-light-dark p-xl transition-colors duration-fast">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-xxl font-bold text-text-primary-light dark:text-text-primary-dark transition-colors duration-fast">
                 {stats.totalTimeTypedWeek}m
               </p>
-              <p className="text-sm text-gray-500">Time typed this week</p>
+              <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark transition-colors duration-fast">
+                Time typed this week
+              </p>
             </div>
-            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-success-light/10 dark:bg-success-dark/10 rounded-lg flex items-center justify-center transition-colors duration-fast">
               <svg
-                className="w-5 h-5 text-green-600"
+                className="w-5 h-5 text-success-light dark:text-success-dark transition-colors duration-fast"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -626,17 +648,19 @@ const DashboardPage = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div className="bg-bg-surface-light dark:bg-bg-surface-dark rounded-lg shadow-sm border border-border-light-light dark:border-border-light-dark p-xl transition-colors duration-fast">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-xxl font-bold text-text-primary-light dark:text-text-primary-dark transition-colors duration-fast">
                 {stats.totalRecordings}
               </p>
-              <p className="text-sm text-gray-500">Total recordings</p>
+              <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark transition-colors duration-fast">
+                Total recordings
+              </p>
             </div>
-            <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-warning-light/10 dark:bg-warning-dark/10 rounded-lg flex items-center justify-center transition-colors duration-fast">
               <svg
-                className="w-5 h-5 text-purple-600"
+                className="w-5 h-5 text-warning-light dark:text-warning-dark transition-colors duration-fast"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -654,18 +678,20 @@ const DashboardPage = () => {
       </div>
 
       {/* Stats Set 2 */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-xl">
+        <div className="bg-bg-surface-light dark:bg-bg-surface-dark rounded-lg shadow-sm border border-border-light-light dark:border-border-light-dark p-xl transition-colors duration-fast">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-xxl font-bold text-text-primary-light dark:text-text-primary-dark transition-colors duration-fast">
                 {stats.totalWordsLastWeek.toLocaleString()}
               </p>
-              <p className="text-sm text-gray-500">Words captured last week</p>
+              <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark transition-colors duration-fast">
+                Words captured last week
+              </p>
             </div>
-            <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-mark-light/10 dark:bg-mark-dark/10 rounded-lg flex items-center justify-center transition-colors duration-fast">
               <svg
-                className="w-5 h-5 text-yellow-600"
+                className="w-5 h-5 text-mark-light dark:text-mark-dark transition-colors duration-fast"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -681,17 +707,19 @@ const DashboardPage = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div className="bg-bg-surface-light dark:bg-bg-surface-dark rounded-lg shadow-sm border border-border-light-light dark:border-border-light-dark p-xl transition-colors duration-fast">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-xxl font-bold text-text-primary-light dark:text-text-primary-dark transition-colors duration-fast">
                 {stats.avgWordsPerRecording}
               </p>
-              <p className="text-sm text-gray-500">Words per recording</p>
+              <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark transition-colors duration-fast">
+                Words per recording
+              </p>
             </div>
-            <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-primary-light/10 dark:bg-primary-dark/10 rounded-lg flex items-center justify-center transition-colors duration-fast">
               <svg
-                className="w-5 h-5 text-indigo-600"
+                className="w-5 h-5 text-primary-light dark:text-primary-dark transition-colors duration-fast"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -707,17 +735,19 @@ const DashboardPage = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div className="bg-bg-surface-light dark:bg-bg-surface-dark rounded-lg shadow-sm border border-border-light-light dark:border-border-light-dark p-xl transition-colors duration-fast">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-xxl font-bold text-text-primary-light dark:text-text-primary-dark transition-colors duration-fast">
                 {stats.avgWordsPerMinute}
               </p>
-              <p className="text-sm text-gray-500">Words per minute</p>
+              <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark transition-colors duration-fast">
+                Words per minute
+              </p>
             </div>
-            <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-error-light/10 dark:bg-error-dark/10 rounded-lg flex items-center justify-center transition-colors duration-fast">
               <svg
-                className="w-5 h-5 text-red-600"
+                className="w-5 h-5 text-error-light dark:text-error-dark transition-colors duration-fast"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -735,26 +765,28 @@ const DashboardPage = () => {
       </div>
 
       {/* Daily Recordings Chart */}
-      <div className="bg-gray-50 rounded-lg border border-gray-50 p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-medium text-gray-900">Daily Recordings</h2>
-          <p className="text-sm text-gray-500">
+      <div className="bg-bg-surface-light dark:bg-bg-surface-dark rounded-lg border border-border-light-light dark:border-border-light-dark p-xl transition-colors duration-fast">
+        <div className="flex items-center justify-between mb-xl">
+          <h2 className="text-lg font-medium text-text-primary-light dark:text-text-primary-dark transition-colors duration-fast">
+            Daily Recordings
+          </h2>
+          <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark transition-colors duration-fast">
             {chartData.length > 0 && (
               <>Last {chartData.length} days</>
             )}
           </p>
         </div>
-        
-        <LineChart 
-          data={chartData} 
-          height={250} 
+
+        <LineChart
+          data={chartData}
+          height={250}
         />
       </div>
 
       {/* Recent Recordings */}
-      <div className="bg-gray-50 rounded-lg border border-gray-50 bg-gray-50 p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-medium text-gray-900">
+      <div className="bg-bg-surface-light dark:bg-bg-surface-dark rounded-lg border border-border-light-light dark:border-border-light-dark p-xl transition-colors duration-fast">
+        <div className="flex items-center justify-between mb-xl">
+          <h2 className="text-lg font-medium text-text-primary-light dark:text-text-primary-dark transition-colors duration-fast">
             Recent Recordings
           </h2>
           <Link to="/recordings">
@@ -765,9 +797,9 @@ const DashboardPage = () => {
         </div>
 
         {recentRecordings.length === 0 ? (
-          <div className="text-center py-8">
+          <div className="text-center py-xxxxl">
             <svg
-              className="w-12 h-12 text-gray-300 mx-auto mb-4"
+              className="w-12 h-12 text-border-medium-light dark:text-border-medium-dark mx-auto mb-xl transition-colors duration-fast"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -779,13 +811,15 @@ const DashboardPage = () => {
                 d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
               />
             </svg>
-            <p className="text-gray-500 text-sm">No recordings yet</p>
-            <p className="text-gray-400 text-sm">
+            <p className="text-text-secondary-light dark:text-text-secondary-dark text-sm mb-sm transition-colors duration-fast">
+              No recordings yet
+            </p>
+            <p className="text-text-tertiary-light dark:text-text-tertiary-dark text-sm transition-colors duration-fast">
               Start recording to see your transcriptions here
             </p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-lg">
             {recentRecordings.map((recording) => (
               <RecordingItem
                 key={recording.id}

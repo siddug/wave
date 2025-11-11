@@ -135,15 +135,15 @@ const RecordingsPage = () => {
   };
 
   return (
-    <div className={`space-y-6 p-6 ${currentPlayer ? "pb-24" : ""}`}>
+    <div className={`space-y-xxxl p-xxxl bg-bg-primary-light dark:bg-bg-primary-dark min-h-screen transition-colors duration-fast ${currentPlayer ? "pb-24" : ""}`}>
       {/* Header */}
       <div>
-        <div className="flex items-center justify-between mb-2">
-          <h1 className="text-2xl font-semibold text-gray-900">
+        <div className="flex items-center justify-between mb-md">
+          <h1 className="text-xxl font-bold text-text-primary-light dark:text-text-primary-dark transition-colors duration-fast">
             All Recordings
           </h1>
         </div>
-        <p className="text-gray-600">
+        <p className="text-text-body-light dark:text-text-body-dark transition-colors duration-fast">
           Your recordings appear here. You can replay them or move them to a
           note to work on them separately.
         </p>
@@ -151,9 +151,9 @@ const RecordingsPage = () => {
 
       {/* Recordings List */}
       {loading ? (
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading recordings...</p>
+        <div className="text-center py-xxxxl">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-light dark:border-primary-dark mx-auto mb-xl transition-colors duration-fast"></div>
+          <p className="text-text-body-light dark:text-text-body-dark transition-colors duration-fast">Loading recordings...</p>
         </div>
       ) : (
         <div>
@@ -170,22 +170,22 @@ const RecordingsPage = () => {
           </div>
 
           {totalPages > 1 && !loading && (
-            <div className="flex items-center justify-between mt-6">
-              <div className="text-sm text-gray-500">
+            <div className="flex items-center justify-between mt-xxxl">
+              <div className="text-sm text-text-secondary-light dark:text-text-secondary-dark transition-colors duration-fast">
                 Showing {currentPage * RECORDINGS_PER_PAGE + 1} to{" "}
                 {Math.min((currentPage + 1) * RECORDINGS_PER_PAGE, totalCount)}{" "}
                 of {totalCount} recordings
               </div>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center gap-md">
                 <button
                   onClick={() => handlePageChange(currentPage - 1)}
                   disabled={currentPage === 0}
-                  className="px-3 py-1 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-lg py-sm border border-border-medium-light dark:border-border-medium-dark rounded-md text-sm text-text-body-light dark:text-text-body-dark hover:bg-bg-secondary-light dark:hover:bg-bg-secondary-dark disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-fast"
                 >
                   Previous
                 </button>
 
-                <div className="flex items-center space-x-1">
+                <div className="flex items-center gap-xs">
                   {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
                     let pageNum;
                     if (totalPages <= 5) {
@@ -202,10 +202,10 @@ const RecordingsPage = () => {
                       <button
                         key={pageNum}
                         onClick={() => handlePageChange(pageNum)}
-                        className={`px-3 py-1 text-sm rounded-md ${
+                        className={`px-lg py-sm text-sm rounded-md transition-all duration-fast ${
                           pageNum === currentPage
-                            ? "bg-sky-500 text-white"
-                            : "text-gray-700 hover:bg-gray-100"
+                            ? "bg-primary-light dark:bg-primary-dark text-white"
+                            : "text-text-body-light dark:text-text-body-dark hover:bg-bg-secondary-light dark:hover:bg-bg-secondary-dark"
                         }`}
                       >
                         {pageNum + 1}
@@ -217,7 +217,7 @@ const RecordingsPage = () => {
                 <button
                   onClick={() => handlePageChange(currentPage + 1)}
                   disabled={currentPage >= totalPages - 1}
-                  className="px-3 py-1 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-lg py-sm border border-border-medium-light dark:border-border-medium-dark rounded-md text-sm text-text-body-light dark:text-text-body-dark hover:bg-bg-secondary-light dark:hover:bg-bg-secondary-dark disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-fast"
                 >
                   Next
                 </button>
@@ -229,9 +229,9 @@ const RecordingsPage = () => {
 
       {/* Empty state if no recordings */}
       {recordings.length === 0 && !loading && (
-        <div className="text-center py-12">
+        <div className="text-center py-xxxxl">
           <svg
-            className="w-16 h-16 text-gray-300 mx-auto mb-4"
+            className="w-16 h-16 text-border-medium-light dark:text-border-medium-dark mx-auto mb-xl transition-colors duration-fast"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -243,21 +243,21 @@ const RecordingsPage = () => {
               d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
             />
           </svg>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
+          <h3 className="text-lg font-medium text-text-primary-light dark:text-text-primary-dark mb-md transition-colors duration-fast">
             No recordings found
           </h3>
-          <p className="text-gray-600 mb-6">
+          <p className="text-text-secondary-light dark:text-text-secondary-dark mb-xxxl transition-colors duration-fast">
             Start recording to see your transcriptions here
           </p>
 
-          <div className="bg-sky-50 rounded-lg p-4 text-left max-w-md mx-auto">
-            <h4 className="font-medium text-sky-900 mb-2">Start Recording</h4>
-            <div className="text-sm text-sky-800 space-y-1">
+          <div className="bg-info-light/10 dark:bg-info-dark/10 border border-info-light/30 dark:border-info-dark/30 rounded-lg p-xl text-left max-w-md mx-auto transition-colors duration-fast">
+            <h4 className="font-medium text-text-primary-light dark:text-text-primary-dark mb-md transition-colors duration-fast">Start Recording</h4>
+            <div className="text-sm text-text-body-light dark:text-text-body-dark space-y-xs transition-colors duration-fast">
               <div>
-                🌐 <strong>Hold Globe/Fn:</strong> Press and hold to record
+                🌐 <strong className="text-text-primary-light dark:text-text-primary-dark transition-colors duration-fast">Hold Globe/Fn:</strong> Press and hold to record
               </div>
               <div>
-                ⌨️ <strong>Ctrl + Space:</strong> Toggle recording on/off
+                ⌨️ <strong className="text-text-primary-light dark:text-text-primary-dark transition-colors duration-fast">Ctrl + Space:</strong> Toggle recording on/off
               </div>
             </div>
           </div>

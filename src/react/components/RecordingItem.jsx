@@ -79,18 +79,18 @@ const RecordingItem = ({ recording, showActions = true, onPlay, onDelete }) => {
   const displayText = showOriginal ? (recording.originalText || recording.text) : (recording.text || recording.enhancedText);
 
   return (
-    <div className="border-2 border-gray-50 rounded-lg p-4 bg-gray-50 font-medium transition-colors">
+    <div className="border-2 border-border-light-light dark:border-border-light-dark rounded-lg p-xl bg-bg-surface-light dark:bg-bg-surface-dark font-medium transition-colors duration-fast">
       <div className="flex items-start justify-between">
         <div className="flex-1">
           {/* Recording Text */}
-          <p className="text-gray-900 mb-1 text-sm leading-relaxed" style={{
+          <p className="text-text-primary-light dark:text-text-primary-dark mb-sm text-sm leading-relaxed transition-colors duration-fast" style={{
             whiteSpace: "break-spaceOriginals"
           }}>
             {displayText}
           </p>
 
           {/* Metadata */}
-          <div className="text-xs space-x-2 text-gray-500 mb-0">
+          <div className="text-xs space-x-2 text-text-secondary-light dark:text-text-secondary-dark mb-0 transition-colors duration-fast">
             <span>
               {formatTimeAgo(
                 recording.timestamp || new Date(recording.createdAt).getTime()
@@ -102,14 +102,14 @@ const RecordingItem = ({ recording, showActions = true, onPlay, onDelete }) => {
             {hasMultipleVersions && (
               <button
                 onClick={() => setShowOriginal(!showOriginal)}
-                className="ml-3 px-2 py-1 bg-blue-50 text-blue-600 text-xs rounded hover:bg-blue-100 transition-colors"
+                className="ml-lg px-md py-sm bg-info-light/10 dark:bg-info-dark/10 text-info-light dark:text-info-dark text-xs rounded hover:bg-info-light/20 dark:hover:bg-info-dark/20 transition-colors duration-fast"
                 title={showOriginal ? "Show enhanced version" : "Show original version"}
               >
                 {showOriginal ? "Show enchanced version" : "Show original version"}
               </button>
             )}
             {recording.language && recording.language !== "auto" && (
-              <span className="ml-3 px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">
+              <span className="ml-lg px-md py-sm bg-bg-secondary-light dark:bg-bg-secondary-dark text-text-body-light dark:text-text-body-dark text-xs rounded transition-colors duration-fast">
                 {recording.language.toUpperCase()}
               </span>
             )}
@@ -118,10 +118,10 @@ const RecordingItem = ({ recording, showActions = true, onPlay, onDelete }) => {
 
         {/* Action Icons */}
         {showActions && (
-          <div className="flex items-center gap-2 ml-6">
+          <div className="flex items-center gap-md ml-xxxl">
             <button
               onClick={() => handlePlay(recording)}
-              className="p-2 text-gray-400 hover:text-sky-500 transition-colors"
+              className="p-md text-text-secondary-light dark:text-text-secondary-dark hover:text-primary-light dark:hover:text-primary-dark transition-colors duration-fast"
               title="Play recording"
             >
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -130,7 +130,7 @@ const RecordingItem = ({ recording, showActions = true, onPlay, onDelete }) => {
             </button>
             <button
               onClick={() => handleSelect(recording)}
-              className="p-2 text-gray-400 hover:text-sky-500 transition-colors"
+              className="p-md text-text-secondary-light dark:text-text-secondary-dark hover:text-primary-light dark:hover:text-primary-dark transition-colors duration-fast"
               title="Copy text"
             >
               <svg
@@ -149,7 +149,7 @@ const RecordingItem = ({ recording, showActions = true, onPlay, onDelete }) => {
             </button>
             <button
               onClick={() => handleDelete(recording)}
-              className={`p-2 text-gray-400 hover:text-red-500 transition-colors ${
+              className={`p-md text-text-secondary-light dark:text-text-secondary-dark hover:text-error-light dark:hover:text-error-dark transition-colors duration-fast ${
                 onDelete ? "" : "hidden"
               }`}
               title="Delete recording"
