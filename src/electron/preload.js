@@ -199,6 +199,34 @@ contextBridge.exposeInMainWorld('electronAPI', {
     openLogsFolder: () => ipcRenderer.invoke('open-logs-folder')
   },
   
+  // Voxtral (Node.js transcription)
+  voxtral: {
+    // Check if supported (always true with Node.js backend)
+    checkWebGPU: () => ipcRenderer.invoke('voxtral:check-webgpu'),
+    // Download/load the model
+    download: () => ipcRenderer.invoke('voxtral:download'),
+    // Get model status
+    getStatus: () => ipcRenderer.invoke('voxtral:get-status'),
+    // Select as active model
+    select: () => ipcRenderer.invoke('voxtral:select'),
+    // Delete model cache
+    delete: () => ipcRenderer.invoke('voxtral:delete'),
+    // Preload model into memory
+    preload: () => ipcRenderer.invoke('voxtral:preload'),
+
+    // Event listeners for download progress
+    onDownloadProgress: (callback) => {
+      const handler = (event, data) => callback(data);
+      ipcRenderer.on('voxtral:download-progress', handler);
+      return () => ipcRenderer.removeListener('voxtral:download-progress', handler);
+    },
+    onDownloadComplete: (callback) => {
+      const handler = (event, data) => callback(data);
+      ipcRenderer.on('voxtral:download-complete', handler);
+      return () => ipcRenderer.removeListener('voxtral:download-complete', handler);
+    }
+  },
+
   // LLM Models
   llm: {
     getAvailableModels: () => ipcRenderer.invoke('llm:get-available-models'),

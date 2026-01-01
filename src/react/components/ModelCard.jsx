@@ -77,6 +77,11 @@ const ModelCard = ({
                   Recommended
                 </span>
               )}
+              {model.requiresWebGPU && (
+                <span className="px-md py-xs bg-mark-light/10 dark:bg-mark-dark/10 text-mark-light dark:text-mark-dark text-xs rounded-sm font-medium transition-colors duration-fast">
+                  WebGPU
+                </span>
+              )}
               {isSelected && (
                 <span className="flex items-center gap-xs text-xs text-success-light dark:text-success-dark transition-colors duration-fast">
                   <svg

@@ -87,11 +87,19 @@ const SetupPage = () => {
 
   const loadModelStatus = async () => {
     try {
-      const status = await window.electronAPI?.models?.getStatus();
-      setModelStatus(status || {});
+      // Load Whisper model status
+      const whisperStatus = await window.electronAPI?.models?.getStatus();
 
-      const selectedId = Object.keys(status || {}).find(
-        (id) => status[id]?.selected
+      // Load Voxtral model status
+      const voxtralResult = await window.electronAPI?.voxtral?.getStatus();
+      const voxtralStatus = voxtralResult?.status || {};
+
+      // Merge both statuses
+      const combinedStatus = { ...(whisperStatus || {}), ...voxtralStatus };
+      setModelStatus(combinedStatus);
+
+      const selectedId = Object.keys(combinedStatus).find(
+        (id) => combinedStatus[id]?.selected
       );
       if (selectedId) {
         setSelectedModel(selectedId);
@@ -199,11 +207,43 @@ const SetupPage = () => {
       }
     );
 
+    // Voxtral model listeners
+    const unsubscribeVoxtralProgress = window.electronAPI?.voxtral?.onDownloadProgress(
+      (data) => {
+        setDownloadProgress((prev) => ({
+          ...prev,
+          [data.modelId]: data.progress,
+        }));
+      }
+    );
+
+    const unsubscribeVoxtralComplete = window.electronAPI?.voxtral?.onDownloadComplete(
+      (data) => {
+        setDownloadingModel(null);
+        setDownloadProgress((prev) => ({ ...prev, [data.modelId]: 100 }));
+
+        if (data.success) {
+          setModelStatus((prev) => ({
+            ...prev,
+            [data.modelId]: {
+              downloaded: true,
+              selected: false,
+            },
+          }));
+          toast.success("Voxtral Mini downloaded successfully!");
+        } else {
+          toast.error(data.error || "Failed to download Voxtral model");
+        }
+      }
+    );
+
     return () => {
       if (unsubscribeProgress) unsubscribeProgress();
       if (unsubscribeComplete) unsubscribeComplete();
       if (unsubscribeLLMProgress) unsubscribeLLMProgress();
       if (unsubscribeLLMComplete) unsubscribeLLMComplete();
+      if (unsubscribeVoxtralProgress) unsubscribeVoxtralProgress();
+      if (unsubscribeVoxtralComplete) unsubscribeVoxtralComplete();
     };
   };
 
@@ -348,6 +388,17 @@ const SetupPage = () => {
         "Large model v3 Turbo, faster than v3 with similar accuracy.",
       recommended: false,
     },
+    {
+      id: "voxtral-mini",
+      name: "Voxtral Mini 3B",
+      language: "Multilingual",
+      size: "3 GiB",
+      speed: 6.5,
+      accuracy: 9.5,
+      description:
+        "High-accuracy multilingual model. Supports: EN, FR, DE, ES, IT, PT, NL, HI.",
+      recommended: false,
+    },
   ];
 
   const toCamelCase = (str) => {
@@ -393,6 +444,25 @@ const SetupPage = () => {
 
   // Model management functions
   const handleDownloadModel = async (modelId) => {
+    // Handle Voxtral model download
+    if (modelId === 'voxtral-mini') {
+      try {
+        setDownloadingModel(modelId);
+        setDownloadProgress((prev) => ({ ...prev, [modelId]: 0 }));
+
+        const result = await window.electronAPI?.voxtral?.download();
+        if (!result?.success) {
+          toast.error(result?.error || "Failed to start Voxtral download");
+          setDownloadingModel(null);
+        }
+      } catch (error) {
+        toast.error("Failed to download Voxtral model");
+        setDownloadingModel(null);
+      }
+      return;
+    }
+
+    // Standard Whisper model download
     try {
       setDownloadingModel(modelId);
       setDownloadProgress((prev) => ({ ...prev, [modelId]: 0 }));
@@ -409,6 +479,31 @@ const SetupPage = () => {
   };
 
   const handleSelectModel = async (modelId) => {
+    // Handle Voxtral differently
+    if (modelId === 'voxtral-mini') {
+      try {
+        const result = await window.electronAPI?.voxtral?.select();
+        if (result?.success) {
+          setSelectedModel(modelId);
+          setModelStatus((prev) => {
+            const updated = { ...prev };
+            Object.keys(updated).forEach((id) => {
+              if (updated[id]) updated[id].selected = false;
+            });
+            if (updated[modelId]) updated[modelId].selected = true;
+            return updated;
+          });
+          toast.success("Voxtral Mini selected");
+        } else {
+          toast.error(result?.error || "Failed to select Voxtral");
+        }
+      } catch (error) {
+        toast.error("Failed to select Voxtral model");
+      }
+      return;
+    }
+
+    // Standard Whisper model selection
     try {
       const result = await window.electronAPI?.models?.select(modelId);
       if (result?.success) {
@@ -431,6 +526,23 @@ const SetupPage = () => {
   };
 
   const handleDeleteModel = async (modelId) => {
+    // Handle Voxtral differently
+    if (modelId === 'voxtral-mini') {
+      try {
+        const result = await window.electronAPI?.voxtral?.delete();
+        if (result?.success) {
+          await loadModelStatus();
+          toast.success("Voxtral model deleted");
+        } else {
+          toast.error(result?.error || "Failed to delete Voxtral");
+        }
+      } catch (error) {
+        toast.error("Failed to delete Voxtral model");
+      }
+      return;
+    }
+
+    // Standard Whisper model deletion
     try {
       const result = await window.electronAPI?.models?.delete(modelId);
       if (result?.success) {

@@ -60,8 +60,8 @@ const ModelsPage = () => {
       selected: false,
       recommended: false
     },
-    { 
-      id: 'large-v3-turbo', 
+    {
+      id: 'large-v3-turbo',
       name: 'Whisper Large V3 Turbo',
       language: 'Multilingual',
       size: '2.8 GiB',
@@ -72,6 +72,19 @@ const ModelsPage = () => {
       downloading: false,
       progress: 100,
       selected: true
+    },
+    {
+      id: 'voxtral-mini',
+      name: 'Voxtral Mini 3B',
+      language: 'Multilingual',
+      size: '3 GiB',
+      speed: 6.5,
+      accuracy: 9.5,
+      description: 'High-accuracy multilingual model. Supports: EN, FR, DE, ES, IT, PT, NL, HI.',
+      downloaded: false,
+      downloading: false,
+      progress: 0,
+      selected: false
     },
   ]);
 
@@ -185,9 +198,9 @@ const ModelsPage = () => {
 
     // LLM Model event listeners
     const unsubscribeLLMProgress = window.electronAPI?.llm?.onDownloadProgress((data) => {
-      setLLMModels(prevModels => 
-        prevModels.map(model => 
-          model.id === data.modelId 
+      setLLMModels(prevModels =>
+        prevModels.map(model =>
+          model.id === data.modelId
             ? { ...model, progress: data.progress }
             : model
         )
@@ -196,24 +209,24 @@ const ModelsPage = () => {
 
     const unsubscribeLLMComplete = window.electronAPI?.llm?.onDownloadComplete((data) => {
       console.log(`[UI] LLM Download complete event received:`, data);
-      
-      setLLMModels(prevModels => 
-        prevModels.map(model => 
+
+      setLLMModels(prevModels =>
+        prevModels.map(model =>
           model.id === data.modelId
-            ? { 
-                ...model, 
-                downloading: false, 
-                downloaded: data.success, 
+            ? {
+                ...model,
+                downloading: false,
+                downloaded: data.success,
                 progress: 100,
                 selected: data.autoSelected === true
               }
             : (data.autoSelected === true ? { ...model, selected: false } : model)
         )
       );
-      
+
       if (data.success) {
         loadLLMModelStatus();
-        
+
         if (data.autoSelected === true) {
           console.log(`[UI] Auto-selecting LLM model: ${data.modelId}`);
           setSelectedLLMModel(data.modelId);
@@ -227,27 +240,75 @@ const ModelsPage = () => {
       }
     });
 
+    // Voxtral Model event listeners
+    const unsubscribeVoxtralProgress = window.electronAPI?.voxtral?.onDownloadProgress((data) => {
+      setModels(prevModels =>
+        prevModels.map(model =>
+          model.id === data.modelId
+            ? { ...model, progress: data.progress }
+            : model
+        )
+      );
+    });
+
+    const unsubscribeVoxtralComplete = window.electronAPI?.voxtral?.onDownloadComplete((data) => {
+      console.log(`[UI] Voxtral Download complete event received:`, data);
+
+      setModels(prevModels =>
+        prevModels.map(model =>
+          model.id === data.modelId
+            ? {
+                ...model,
+                downloading: false,
+                downloaded: data.success,
+                progress: 100
+              }
+            : model
+        )
+      );
+
+      if (data.success) {
+        loadModelStatus();
+        toast.success('Voxtral Mini downloaded successfully!');
+      } else {
+        toast.error(data.error || 'Failed to download Voxtral model');
+      }
+    });
+
     return () => {
       if (unsubscribeProgress) unsubscribeProgress();
       if (unsubscribeComplete) unsubscribeComplete();
       if (unsubscribeLLMProgress) unsubscribeLLMProgress();
       if (unsubscribeLLMComplete) unsubscribeLLMComplete();
+      if (unsubscribeVoxtralProgress) unsubscribeVoxtralProgress();
+      if (unsubscribeVoxtralComplete) unsubscribeVoxtralComplete();
     };
   }, []); // Empty dependency array - listeners don't need to change
 
   const loadModelStatus = async () => {
     try {
       console.log('[UI] Loading model status...');
-      const result = await window.electronAPI?.models?.getStatus();
-      console.log('[UI] Model status result:', result);
-      
-      if (result) {
-        setModels(prevModels => 
+      // Load Whisper model status
+      const whisperResult = await window.electronAPI?.models?.getStatus();
+      console.log('[UI] Whisper model status result:', whisperResult);
+
+      // Load Voxtral model status
+      const voxtralResult = await window.electronAPI?.voxtral?.getStatus();
+      console.log('[UI] Voxtral model status result:', voxtralResult);
+
+      // Merge statuses
+      const combinedResult = {
+        ...(whisperResult || {}),
+        ...(voxtralResult?.status || {})
+      };
+
+      if (combinedResult) {
+        setModels(prevModels =>
           prevModels.map(model => ({
             ...model,
-            downloaded: result[model.id]?.downloaded ?? false,
-            selected: result[model.id]?.selected ?? false,
-            downloading: result[model.id]?.downloading ?? false
+            downloaded: combinedResult[model.id]?.downloaded ?? false,
+            selected: combinedResult[model.id]?.selected ?? false,
+            downloading: combinedResult[model.id]?.downloading ?? false
           }))
         );
         console.log('[UI] Models updated after status load');
@@ -306,21 +367,57 @@ const ModelsPage = () => {
   };
 
   const handleDownloadModel = async (modelId) => {
+    // Handle Voxtral model download
+    if (modelId === 'voxtral-mini') {
+      try {
+        setModels(prevModels =>
+          prevModels.map(model =>
+            model.id === modelId
+              ? { ...model, downloading: true, progress: 0 }
+              : model
+          )
+        );
+
+        const result = await window.electronAPI?.voxtral?.download();
+        if (!result?.success) {
+          toast.error(result?.error || 'Failed to start Voxtral download');
+          setModels(prevModels =>
+            prevModels.map(model =>
+              model.id === modelId
+                ? { ...model, downloading: false }
+                : model
+            )
+          );
+        }
+      } catch (error) {
+        toast.error('Failed to download Voxtral model');
+        setModels(prevModels =>
+          prevModels.map(model =>
+            model.id === modelId
+              ? { ...model, downloading: false }
+              : model
+          )
+        );
+      }
+      return;
+    }
+
+    // Standard Whisper model download
     try {
-      setModels(prevModels => 
-        prevModels.map(model => 
-          model.id === modelId 
+      setModels(prevModels =>
+        prevModels.map(model =>
+          model.id === modelId
             ? { ...model, downloading: true, progress: 0 }
             : model
         )
       );
-      
+
       const result = await window.electronAPI?.models?.download(modelId);
       if (!result?.success) {
         toast.error('Failed to start model download');
-        setModels(prevModels => 
-          prevModels.map(model => 
-            model.id === modelId 
+        setModels(prevModels =>
+          prevModels.map(model =>
+            model.id === modelId
               ? { ...model, downloading: false }
               : model
           )
@@ -328,9 +425,9 @@ const ModelsPage = () => {
       }
     } catch (error) {
       toast.error('Failed to download model');
-      setModels(prevModels => 
-        prevModels.map(model => 
-          model.id === modelId 
+      setModels(prevModels =>
+        prevModels.map(model =>
+          model.id === modelId
             ? { ...model, downloading: false }
             : model
         )
@@ -339,11 +436,34 @@ const ModelsPage = () => {
   };
 
   const handleSelectModel = async (modelId) => {
+    // Handle Voxtral differently
+    if (modelId === 'voxtral-mini') {
+      try {
+        const result = await window.electronAPI?.voxtral?.select();
+        if (result?.success) {
+          setSelectedModel(modelId);
+          setModels(prevModels =>
+            prevModels.map(model => ({
+              ...model,
+              selected: model.id === modelId
+            }))
+          );
+          toast.success('Voxtral Mini selected');
+        } else {
+          toast.error(result?.error || 'Failed to select Voxtral');
+        }
+      } catch (error) {
+        toast.error('Failed to select Voxtral model');
+      }
+      return;
+    }
+
+    // Standard Whisper model selection
     try {
       const result = await window.electronAPI?.models?.select(modelId);
       if (result?.success) {
         setSelectedModel(modelId);
-        setModels(prevModels => 
+        setModels(prevModels =>
           prevModels.map(model => ({
             ...model,
             selected: model.id === modelId
@@ -360,6 +480,26 @@ const ModelsPage = () => {
 
   const handleDeleteModel = async (modelId) => {
     console.log(`[UI] Attempting to delete model: ${modelId}`);
+
+    // Handle Voxtral differently
+    if (modelId === 'voxtral-mini') {
+      try {
+        const result = await window.electronAPI?.voxtral?.delete();
+        console.log(`[UI] Voxtral Delete result:`, result);
+        if (result?.success) {
+          await loadModelStatus();
+          toast.success('Voxtral model deleted');
+        } else {
+          toast.error(result?.error || 'Failed to delete Voxtral');
+        }
+      } catch (error) {
+        console.log(`[UI] Voxtral Delete error:`, error);
+        toast.error('Failed to delete Voxtral model');
+      }
+      return;
+    }
+
+    // Standard Whisper model deletion
     try {
       const result = await window.electronAPI?.models?.delete(modelId);
       console.log(`[UI] Delete result:`, result);

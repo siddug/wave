@@ -17,6 +17,7 @@ const { spawn } = require("child_process");
 const ffmpeg = require("fluent-ffmpeg");
 const ffmpegStatic = require("ffmpeg-static");
 const AudioService = require("./audioService");
+const VoxtralService = require("./voxtralService");
 
 // Set ffmpeg path for fluent-ffmpeg with early detection
 console.log("[FFMPEG] Configuring ffmpeg...");
@@ -355,6 +356,7 @@ ${originalText}`;
 
 let mainWindow = null;
 let pillWindow = null;
+let voxtralService = null; // VoxtralService instance for Node.js-based transcription
 let tray = null;
 let keyboardListener = null;
 let isRecording = false;
@@ -643,6 +645,68 @@ function createPillWindow() {
   });
 
   return pillWindow;
+}
+
+// Transcribe audio using Voxtral (Node.js)
+async function transcribeWithVoxtral(audioBuffer, language = 'en') {
+  console.log("[VOXTRAL] Starting Voxtral transcription...");
+
+  if (!voxtralService) {
+    throw new Error('Voxtral service not initialized');
+  }
+
+  try {
+    // Save audio buffer to temp file
+    const tempDir = path.join(app.getPath('temp'), 'wave');
+    await fs.mkdir(tempDir, { recursive: true });
+    const timestamp = Date.now();
+    const tempInputPath = path.join(tempDir, `voxtral-input-${timestamp}.webm`);
+    const tempWavPath = path.join(tempDir, `voxtral-${timestamp}.wav`);
+
+    // Convert ArrayBuffer to Buffer if needed
+    const buffer = audioBuffer instanceof ArrayBuffer ? Buffer.from(audioBuffer) : audioBuffer;
+    await fs.writeFile(tempInputPath, buffer);
+
+    // Convert WebM to WAV using ffmpeg (16kHz mono for Whisper)
+    console.log("[VOXTRAL] Converting audio to WAV format...");
+    await new Promise((resolve, reject) => {
+      ffmpeg(tempInputPath)
+        .audioFrequency(16000)
+        .audioChannels(1)
+        .audioCodec('pcm_s16le')
+        .format('wav')
+        .on('error', (err) => {
+          console.error("[VOXTRAL] FFmpeg error:", err);
+          reject(err);
+        })
+        .on('end', () => {
+          console.log("[VOXTRAL] Audio converted to WAV");
+          resolve();
+        })
+        .save(tempWavPath);
+    });
+
+    // Clean up input file
+    try {
+      await fs.unlink(tempInputPath);
+    } catch (e) {}
+
+    // Transcribe using the service
+    const result = await voxtralService.transcribeAudio(tempWavPath, { language });
+
+    // Clean up temp file
+    try {
+      await fs.unlink(tempWavPath);
+    } catch (e) {
+      console.warn("[VOXTRAL] Failed to delete temp file:", e);
+    }
+
+    console.log("[VOXTRAL] Transcription complete:", result.text?.substring(0, 100));
+    return result;
+  } catch (error) {
+    console.error("[VOXTRAL] Transcription error:", error);
+    throw error;
+  }
 }
 
 function createTray() {
@@ -1655,6 +1719,15 @@ app.whenReady().then(async () => {
       console.warn("[LLM] Failed to initialize service:", error);
     }
 
+    // Initialize Voxtral service
+    try {
+      voxtralService = new VoxtralService();
+      await voxtralService.init();
+      console.log("[VOXTRAL] Service initialized successfully");
+    } catch (error) {
+      console.warn("[VOXTRAL] Failed to initialize service:", error);
+    }
+
     setTimeout(() => {
       // Create pill window (hidden initially, like speak repo)
       const pillWin = createPillWindow();
@@ -1932,11 +2005,23 @@ ipcMain.handle("recording:audio-ready", async (event, audioBuffer) => {
       throw new Error("No model selected");
     }
 
-    // Transcribe the audio
-    const result = await transcribeAudio({
-      audioBuffer,
-      modelId: selectedModel,
-    });
+    // Transcribe the audio - route to Voxtral or Whisper based on selected model
+    let result;
+    if (selectedModel === 'voxtral-mini') {
+      console.log("[RECORDING] Using Voxtral for transcription");
+      try {
+        result = await transcribeWithVoxtral(audioBuffer);
+      } catch (voxtralError) {
+        console.error("[RECORDING] Voxtral transcription failed:", voxtralError);
+        throw new Error(`Voxtral transcription failed: ${voxtralError.message}`);
+      }
+    } else {
+      console.log("[RECORDING] Using Whisper for transcription, model:", selectedModel);
+      result = await transcribeAudio({
+        audioBuffer,
+        modelId: selectedModel,
+      });
+    }
 
     if (result.success) {
       console.log("[RECORDING] Transcription successful:", result.text);
@@ -2044,6 +2129,10 @@ ipcMain.handle("recording:audio-ready", async (event, audioBuffer) => {
 
     // Clear shortcut mode after recording completes
     recordingShortcutMode = null;
+    isTranscribing = false;
+
+    // Notify React UI that transcription is complete
+    updateRecordingState({ recording: false, transcribing: false });
 
     // Hide pill after all processing is complete
     console.log("[RECORDING] Hiding pill window after all processing");
@@ -2055,6 +2144,10 @@ ipcMain.handle("recording:audio-ready", async (event, audioBuffer) => {
 
     // Clear shortcut mode on error
     recordingShortcutMode = null;
+    isTranscribing = false;
+
+    // Notify React UI that transcription is complete (even on error)
+    updateRecordingState({ recording: false, transcribing: false });
 
     // Hide pill on error too
     hideRecordingPill();
@@ -2869,6 +2962,142 @@ ipcMain.handle("open-logs-folder", async () => {
     return { success: true, path: logsDir };
   } catch (error) {
     console.error("[LOGS] Failed to open logs folder:", error);
+    return { success: false, error: error.message };
+  }
+});
+
+// ========================================
+// VOXTRAL (Node.js Transcription) HANDLERS
+// ========================================
+
+// Check WebGPU support - now just returns true since we use CPU
+ipcMain.handle('voxtral:check-webgpu', async () => {
+  // With Node.js backend, we don't need WebGPU - always supported
+  return { supported: true, adapter: 'CPU (Node.js)' };
+});
+
+// Start Voxtral model download
+ipcMain.handle('voxtral:download', async () => {
+  console.log("[VOXTRAL] Starting model download...");
+
+  if (!voxtralService) {
+    return { success: false, error: 'Voxtral service not initialized' };
+  }
+
+  try {
+    // Clear any corrupted cache first, then download fresh
+    await voxtralService.downloadModel((progress) => {
+      console.log("[VOXTRAL] Download progress:", progress.progress, "%");
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('voxtral:download-progress', progress);
+      }
+    }, true); // forceRedownload = true to clear corrupted cache
+
+    // Mark as downloaded
+    store.set('voxtralDownloaded', true);
+
+    // Send completion event
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('voxtral:download-complete', {
+        success: true,
+        modelId: 'voxtral-mini'
+      });
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("[VOXTRAL] Download error:", error);
+
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('voxtral:download-complete', {
+        success: false,
+        modelId: 'voxtral-mini',
+        error: error.message
+      });
+    }
+
+    return { success: false, error: error.message };
+  }
+});
+
+// Get Voxtral model status
+ipcMain.handle('voxtral:get-status', async () => {
+  const downloaded = store.get('voxtralDownloaded', false);
+  const selected = store.get('selectedModel') === 'voxtral-mini';
+
+  // Also check service status if available
+  let serviceStatus = {};
+  if (voxtralService) {
+    try {
+      serviceStatus = await voxtralService.getStatus();
+    } catch (e) {
+      console.warn("[VOXTRAL] Could not get service status:", e);
+    }
+  }
+
+  return {
+    success: true,
+    status: {
+      'voxtral-mini': {
+        downloaded: downloaded || serviceStatus.downloaded,
+        selected,
+        downloading: serviceStatus.isLoading || false,
+        isReady: serviceStatus.isReady || false
+      }
+    }
+  };
+});
+
+// Select Voxtral as the transcription model
+ipcMain.handle('voxtral:select', async () => {
+  console.log("[VOXTRAL] Selecting Voxtral as transcription model");
+  store.set('selectedModel', 'voxtral-mini');
+
+  // Preload the model when selected
+  if (voxtralService) {
+    try {
+      await voxtralService.preloadModel();
+    } catch (error) {
+      console.warn("[VOXTRAL] Could not preload model:", error.message);
+    }
+  }
+
+  return { success: true };
+});
+
+// Delete Voxtral model (clear cache)
+ipcMain.handle('voxtral:delete', async () => {
+  console.log("[VOXTRAL] Deleting Voxtral model...");
+  try {
+    if (voxtralService) {
+      await voxtralService.deleteModel();
+    }
+
+    // Clear downloaded status
+    store.set('voxtralDownloaded', false);
+
+    // If voxtral was selected, clear selection
+    if (store.get('selectedModel') === 'voxtral-mini') {
+      store.delete('selectedModel');
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("[VOXTRAL] Delete error:", error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Preload Voxtral model
+ipcMain.handle('voxtral:preload', async () => {
+  console.log("[VOXTRAL] Preloading Voxtral model...");
+  try {
+    if (voxtralService) {
+      await voxtralService.preloadModel();
+    }
+    return { success: true };
+  } catch (error) {
+    console.error("[VOXTRAL] Preload error:", error);
     return { success: false, error: error.message };
   }
 });
